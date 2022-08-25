@@ -18,8 +18,8 @@
  */
 #include "flash.h"
 #include "string.h"
-volatile int command;
 
+volatile int command;
 void uint8_t commands[numOfCmds][cfgStrSize] = {{'m','2','4','c','x','x','w','r'},
                                                 {'m','2','4','c','x','x','r','d'},
                                                 {'w','2','5','q','x','x','w','r'},

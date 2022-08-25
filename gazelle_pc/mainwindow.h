@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QFileDialog>
 #include <QMainWindow>
 #include <QSerialPort>
 #include <QTimer>
@@ -8,8 +9,6 @@
 #include <QPushButton>
 #include <QToolBar>
 #include <QStatusBar>
-#include <QValueAxis>
-#include <QBoxLayout>
 #include <QTextEdit>
 #include <QWidget>
 
@@ -22,11 +21,8 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public slots:
-    void upgrade(void);
-    void prevF(void);
-    void nextF(void);
-    void pauseF(void);
-    void clrF(void);
+    void openBin(void);
+    void saveBin(void);
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
@@ -42,19 +38,10 @@ private:
     QTextEdit *mem;
     QStatusBar *stBar;
     // port
-    QSerialPort *rxPort;
+    QSerialPort *flaserPort;
     // костыль
     QTimer *timer;
-    // buffer
-    static constexpr int rxSize = 20000;
-    static constexpr int scrSize = 200;
-    static constexpr float period = 0.0002;
-    int received;
-    char rxBuf[rxSize];
-    int lr = 0;
-    int commandCntr = 0;
-    bool isPause = false;
-    void samsungRecognizer(void);
-    void necRecognizer(void);
+    // file
+    QFile *binary;
 };
 #endif // MAINWINDOW_H
