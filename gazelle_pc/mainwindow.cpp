@@ -82,31 +82,11 @@ void MainWindow::openBin()
         binary = newFile;
     }
     mem->clear();
-    int cnt = 0;
-    char data;
     unsigned char line[16];
     qDebug() << fileName;
     while (!binary->atEnd()) {
         binary->read((char *)line,16);
         mem->insertPlainText(QString::asprintf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x \n",line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7],line[8],line[9],line[10],line[11],line[12],line[13],line[14],line[15]));
-
-//        mem->insertPlainText(QString("%1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12 %13 %14 %15 %16").arg(line[0],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[1],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[2],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[3],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[4],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[5],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[6],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[7],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[8],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[9],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[10],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[11],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[12],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[13],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[14],2,16,QLatin1Char('0'))
-//                                                                                              .arg(line[15],2,16,QLatin1Char('0')));
-
 //        QByteArray byteStr = binary->readLine(16);
 //        mem->insertPlainText(QString("%1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12 %13 %14 %15 %16").arg(byteStr.at(0),2,16,QLatin1Char('0'))
 //                                                                                              .arg(byteStr.at(1),2,16,QLatin1Char('0'))
@@ -124,7 +104,6 @@ void MainWindow::openBin()
 //                                                                                              .arg(byteStr.at(13),2,16,QLatin1Char('0'))
 //                                                                                              .arg(byteStr.at(14),2,16,QLatin1Char('0'))
 //                                                                                              .arg(byteStr.at(15),2,16,QLatin1Char('0')));
-//        qDebug() << "str!";
 //        binary->read(&data,sizeof(char));
 //        mem->insertPlainText(QString("%1 ").arg((unsigned char)data,2,16,QLatin1Char('0')));
 //        if( ++cnt >= 16 ) {

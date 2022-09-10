@@ -16,3 +16,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
+void i2cFlashInit()
+{
+    
+}
+uint8_t i2cFlashReadByte(uint16_t address);
+int i2cFlashReadPage(uint16_t startAddress, int size);
+
+uint8_t i2cFlashWriteByte(uint16_t address);
+int i2cFlashWritePage(uint16_t startAddress, int size);
