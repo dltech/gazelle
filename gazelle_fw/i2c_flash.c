@@ -17,11 +17,22 @@
  * limitations under the License.
  */
 
+#include "../lib/regs/rcc_regs.h"
+#include "../lib/regs/i2c_regs.h"
+#include "../lib/regs/dma_regs.h"
 
 void i2cFlashInit()
 {
-    
+    // module clocking
+    RCC_APB1ENR |= I2C1EN;
+    RCC_AHBENR  |= DMA1EN;
+    // clocking of the interface
+    I2C1_CR2 = 36 & FREQ_MSK;
+    I2C1_CCR = F_S | DUTY | I2C400K;
+    I2C1_TRISE = TRISE_NS(50);
+    //
 }
+
 uint8_t i2cFlashReadByte(uint16_t address);
 int i2cFlashReadPage(uint16_t startAddress, int size);
 
