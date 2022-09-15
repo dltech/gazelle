@@ -18,7 +18,9 @@
  */
 #include "flash.h"
 #include "string.h"
+#include "i2c_flash.h"
 
+uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE];
 volatile int command;
 void uint8_t commands[numOfCmds][cfgStrSize] = {{'m','2','4','c','x','x','w','r'},
                                                 {'m','2','4','c','x','x','r','d'},
