@@ -18,6 +18,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <inttypes.h>
+#include "../lib/regs/gpio_regs.h"
+
+#define I2C_PORT    GPIOB_CRL
+#define I2C_PIN1    6
+#define I2C_PIN2    7
 
 #define PAGE_SIZE           32
 #define HEADER_OFFSET       3
@@ -27,7 +33,11 @@
 #define ADDR_24CXX_READ     0xb0
 
 void i2cFlashInit(void);
-int i2cFlashReadByte(uint16_t address);
 int i2cFlashReadPage(uint16_t startAddress, int size);
+int i2cFlashWritePage(uint16_t startAddress, int size);
+
+int i2cFlashWriteByte(uint16_t address);
+uint8_t i2cFlashReadByte(uint16_t address);
+
 
 #endif

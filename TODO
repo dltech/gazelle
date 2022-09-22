@@ -1,0 +1,6 @@
+*support of yet another standard JTAG controlers (CC2640 NRF51)
+*PIC16 old support
+*STM32 st-link clone
+*AVR ISP support
+*check some else Flash
+*autodetect

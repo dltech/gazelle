@@ -19,6 +19,7 @@
  */
 
 #include "memorymap.h"
+#include "../STM32F103_CMSIS/stm32f103.h"
 
 /* I2C Control register 1 */
 #define I2C1_CR1   MMIO32(I2C1_BASE + 0x00)

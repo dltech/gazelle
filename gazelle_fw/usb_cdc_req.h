@@ -30,6 +30,8 @@
 #define SET_CONTROL_LINE_STATE  0x22
 #define SERIAL_STATE            0x20
 
+#define LINECODING_SIZE 7
+
 // this function is just a part of main request handler
 int cdcReqHandler(requestTyp *request);
 // checks is request of HID type (ret 1) or not (0)

@@ -1,18 +1,18 @@
 #paths
-TARGET = ../result/usbcom
+TARGET = ../result/gazelle_fw
 LIB_DIR = ../lib
 REG_DIR	= $(LIB_DIR)/regs
-ODIR = bin/usbcom
+ODIR = bin/gazelle_fw
 BINDIR = bin
 
 # code is here
 SOURCES = main.c
-SOURCES += ir_remote.c
-SOURCES += usbcom.c
+SOURCES += flash.c
+SOURCES += gazelle.c
+SOURCES += i2c_flash.c
 SOURCES += usb_core.c
 SOURCES += usb_cdc_req.c
 SOURCES += usb_st_req.c
-SOURCES += uart.c
 SOURCES += $(LIB_DIR)/rcc.c
 SOURCES += $(LIB_DIR)/delay.c
 SOURCES += $(REG_DIR)/usb_device_regs.c

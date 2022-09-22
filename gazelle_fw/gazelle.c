@@ -18,8 +18,9 @@
 
 #include "../lib/STM32F103_CMSIS/stm32f103.h"
 #include "usb_core.h"
-#include "gazelle.h"
 #include "gazelle_desc.h"
+#include "flash.h"
+#include "gazelle.h"
 
 volatile int confSize;
 
