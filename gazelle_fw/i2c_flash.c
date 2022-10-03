@@ -27,7 +27,7 @@ extern uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE];
 
 int stage = 0;
 int toutTrace[50];
-uint32_t sr21, sr22, sr12, sr13, sr23, sr24, sr14, sr15;
+uint32_t sr21, sr22, sr12, sr13, sr23, sr24, sr14, sr15, sr26, sr16;
 
 int i2cTxByteInner(uint8_t byte);
 int i2cTxAddrInner(uint8_t addr);
@@ -67,10 +67,13 @@ int i2cTxAddrInner(uint8_t addr)
     sr24 = I2C1_SR2;
     sr14 = I2C1_SR1;
     tOut = 1e6;
-    while( ((I2C1_SR1 & ADDR) == 0 ) && (--tOut > 0) );
+    while( ((I2C1_SR1 & ADDR) == 0) && ((I2C1_SR1 & AF) == 0) && (--tOut > 0) );
     if(tOut < 0) {
         return -1;
     }
+    // if( (I2C1_SR1 & AF) != 0 ) {
+    //     return -2;
+    // }
 
     toutTrace[stage] = tOut;
     sr15 = I2C1_SR1;
@@ -80,18 +83,21 @@ int i2cTxAddrInner(uint8_t addr)
     (void)I2C1_SR2;
     (void)I2C1_SR1;
 
+    sr26 = I2C1_SR2;
+    sr16 = I2C1_SR1;
+
     return 0;
 }
 
 int i2cTxByteInner(uint8_t byte)
 {
     int32_t tOut = 1e6;
-    while( ((I2C1_SR1 & ITXE) == 0 ) && (--tOut > 0) );
+    while(((I2C1_SR1 & ITXE) == 0) && ((I2C1_SR1 & AF) == 0) && (--tOut > 0));
     if(tOut < 0) {
         return -1;
     }
     I2C1_DR = byte;
-
+    
     toutTrace[stage] = tOut;
     return 0;
 }
