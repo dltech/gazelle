@@ -25,49 +25,121 @@
 
 extern uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE];
 
+int stage = 0;
+int toutTrace[50];
+uint32_t sr21, sr22, sr12, sr13, sr23, sr24, sr14, sr15;
+
 int i2cTxByteInner(uint8_t byte);
 int i2cTxAddrInner(uint8_t addr);
+int i2cTxStop(void);
+int i2cRxByteInner(void);
+
 
 int i2cTxAddrInner(uint8_t addr)
 {
-    I2C1_CR1 |= START;
-
-    I2C1_DR = addr;
+    sr21 = I2C1_SR2;
+    // wait for a busy state of the interface
     int32_t tOut = 1e6;
-    while( ((I2C1_SR1 & ADDR) != 0 ) || (--tOut > 0) );
+    while( ((I2C1_SR2 & BUSY) != 0) && (--tOut > 0) );
     if(tOut < 0) {
         return -1;
     }
-    tOut = (int32_t)I2C1_SR1;
-    tOut = (int32_t)I2C1_SR2;
+    toutTrace[stage++] = tOut;
+
+    I2C1_SR1 = 0;
+    (void)I2C1_SR2;
+    (void)I2C1_SR1;
+
+    sr22 = I2C1_SR2;
+    sr12 = I2C1_SR1;
+    // sending start bit with control sequence
+    I2C1_CR1 |= START;
+    tOut = 1e6;
+    while( ((I2C1_SR1 & SB) == 0 ) && (--tOut > 0) );
+
+    sr23 = I2C1_SR2;
+    sr13 = I2C1_SR1;
+    toutTrace[stage++] = tOut;
+
+    // sending address with control sequence
+    I2C1_DR = addr;
+    (void)I2C1_SR1;
+    sr24 = I2C1_SR2;
+    sr14 = I2C1_SR1;
+    tOut = 1e6;
+    while( ((I2C1_SR1 & ADDR) == 0 ) && (--tOut > 0) );
+    if(tOut < 0) {
+        return -1;
+    }
+
+    toutTrace[stage] = tOut;
+    sr15 = I2C1_SR1;
+
+    // resetting all status bits
+    I2C1_SR1 = 0;
+    (void)I2C1_SR2;
+    (void)I2C1_SR1;
+
     return 0;
 }
 
 int i2cTxByteInner(uint8_t byte)
 {
-    I2C1_DR = byte;
     int32_t tOut = 1e6;
-    while( ((I2C1_SR1 & ITXE) != 0 ) || (--tOut > 0) );
+    while( ((I2C1_SR1 & ITXE) == 0 ) && (--tOut > 0) );
     if(tOut < 0) {
         return -1;
     }
+    I2C1_DR = byte;
+
+    toutTrace[stage] = tOut;
     return 0;
 }
 
+int i2cRxByteInner(void)
+{
+    int32_t tOut = 1e6;
+    while( ((I2C1_SR1 & IRXNE) == 0 ) && (--tOut > 0) );
+    if(tOut < 0) {
+        return -1;
+    }
+    toutTrace[stage] = tOut;
+    return (uint8_t)I2C1_DR;
+}
+
+int i2cTxStop(void)
+{
+    int32_t tOut = 1e6;
+    while( ((I2C1_SR1 & BTF) != 0 ) && (--tOut > 0) );
+    I2C1_CR1 |= STOP;
+    if(tOut < 0) {
+        return -1;
+    }
+    toutTrace[stage] = tOut;
+    return 0;
+}
+
+
+volatile uint32_t clock;
+volatile uint32_t clock1;
+
 void i2cFlashInit()
 {
+    clock = I2C400K;
+    clock1 = TRISE_NS(500);
     // module clocking
     RCC_APB1ENR |= I2C1EN;
-    RCC_APB1ENR |= IOPBEN;
+    RCC_APB2ENR |= IOPBEN;
     RCC_AHBENR  |= DMA1EN;
     // port config
-    I2C_PORT = CNF_AF_PUSH_PULL(I2C_PIN1) | MODE_OUTPUT50(I2C_PIN1)\
-             | CNF_AF_PUSH_PULL(I2C_PIN2) | MODE_OUTPUT50(I2C_PIN2);
+    I2C_PORT = CNF_AF_OPEN_DRAIN(I2C_PIN1) | MODE_OUTPUT50(I2C_PIN1)\
+             | CNF_AF_OPEN_DRAIN(I2C_PIN2) | MODE_OUTPUT50(I2C_PIN2);
     // clocking of the interface
-    I2C1_CR2 = IDMAEN | ITERREN | (36 & FREQ_MSK);
-    I2C1_CCR = F_S | DUTY | I2C400K;
+    I2C1_CR2 = ITERREN | (36 & FREQ_MSK); // | IDMAEN;
+    I2C1_CCR = 180;//F_S | DUTY | I2C400K;
     I2C1_TRISE = TRISE_NS(50);
-    I2C1_OAR1 = ADDR_24CXX_READ;
+    I2C1_OAR1 = WTF | ADDR_24CXX_READ;
+    // i2c enable
     I2C1_CR1 = PE;
     // dma init
     // tx channel
@@ -88,20 +160,43 @@ uint8_t i2cFlashReadByte(uint16_t address)
     return 0;
 }
 
+
 int i2cFlashReadPage(uint16_t startAddress, int size)
 {
     int err;
+    I2C1_CR1 |= IACK;
     // setting page address
-    err =  i2cTxAddrInner(ADDR_24CXX_READ);
+    err =  i2cTxAddrInner(ADDR_24CXX_WRITE);
+    ++stage;
     err += i2cTxByteInner((uint8_t)(startAddress >> 8));
+    ++stage;
     err += i2cTxByteInner((uint8_t)startAddress);
-    I2C1_CR1 |= STOP;
+    ++stage;
+    err += i2cTxStop();
 
     // starting reading
-    err += i2cTxAddrInner(ADDR_24CXX_READ);
-    // reading data through DMA
-    DMA1_CNDTR7 = (uint32_t)size;
-    DMA1_CCR7 |= DMA_EN;
+    // ++stage;
+    // err += i2cTxAddrInner(ADDR_24CXX_READ);
+    // // reading data through DMA
+    // int tmp;
+    // for(int i=0 ; i<size ; ++i)
+    // {
+    //     ++stage;
+    //     if (i == size - 1) {
+    //         I2C1_CR1 &= ~((uint32_t)IACK);
+    //     }
+    //     tmp = i2cRxByteInner();
+    //     if( tmp < 0 ) {
+    //         --err;
+    //     } else {
+    //         flashToUsbBuffer[i] = (uint8_t)tmp;
+    //     }
+    // }
+    (void)size;
+//    DMA1_CNDTR7 = (uint32_t)size;
+//    DMA1_CCR7 |= DMA_EN;
+    I2C1_CR1 |= STOP;
+
     return err;
 }
 
@@ -110,18 +205,29 @@ int i2cFlashWriteByte(uint16_t address)
     return address;
 }
 
+
 int i2cFlashWritePage(uint16_t startAddress, int size)
 {
     if(size > PAGE_SIZE) {
         return -1;
     }
-    DMA1_CNDTR6 = (uint32_t)size;
-    flashToUsbBuffer[0] = ADDR_24CXX_WRITE;
-    flashToUsbBuffer[1] = (uint8_t)(startAddress >> 8);
-    flashToUsbBuffer[2] = (uint8_t) startAddress;
-    DMA1_CCR6 |= DIR | DMA_EN;
-    I2C1_CR1 |= START;
-    return 0;
+    int err;
+    err =  i2cTxAddrInner(ADDR_24CXX_WRITE);
+    ++stage;
+    err += i2cTxByteInner((uint8_t)(startAddress >> 8));
+    ++stage;
+    err += i2cTxByteInner((uint8_t)startAddress);
+    ++stage;
+    err += i2cTxByteInner(0xee);
+    err += i2cTxStop();
+
+    // DMA1_CNDTR6 = (uint32_t)size;
+    // flashToUsbBuffer[0] = ADDR_24CXX_WRITE;
+    // flashToUsbBuffer[1] = (uint8_t)(startAddress >> 8);
+    // flashToUsbBuffer[2] = (uint8_t) startAddress;
+    // DMA1_CCR6 |= DIR | DMA_EN;
+    // I2C1_CR1 |= START;
+    return err;
 }
 
 void I2C1_EV_Handler(void)

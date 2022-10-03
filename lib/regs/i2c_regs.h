@@ -76,6 +76,8 @@
 #define I2C2_OAR1  MMIO32(I2C2_BASE + 0x08)
 // Addressing mode (slave mode)
 #define ADDMODE         0x8000
+// Should always be kept at 1 by software.
+#define WTF             0x4000
 // Interface address
 #define ADD_7BIT_OFFS   1
 #define ADD_7BIT_MSK    0x00fe
@@ -155,8 +157,8 @@
 // Fm mode duty cycle
 #define DUTY    0x4000
 // CCR[11:0]: Clock control register in Fm/Sm mode (Master mode)
-#define I2C400K SYSTEM_CLOCK/2/400/25
-#define I2C100K SYSTEM_CLOCK/2/100/2
+#define I2C400K SYSTEM_CLOCK/2/400000/25
+#define I2C100K SYSTEM_CLOCK/2/100000/2
 
 /* I2C TRISE register */
 #define I2C1_TRISE MMIO32(I2C1_BASE + 0x20)
