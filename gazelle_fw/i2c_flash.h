@@ -36,8 +36,5 @@ void i2cFlashInit(void);
 int i2cFlashReadPage(uint16_t startAddress, int size);
 int i2cFlashWritePage(uint16_t startAddress, int size);
 
-int i2cFlashWriteByte(uint16_t address);
-uint8_t i2cFlashReadByte(uint16_t address);
-
 
 #endif

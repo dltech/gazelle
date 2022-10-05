@@ -8,9 +8,9 @@ int compl = 0;
 
 int main(void) {
 	gazelleInit();
-	err += i2cFlashWritePage(0x01ff,1);
-	delay_ms(100);
-	err += i2cFlashReadPage(0x01ff,30);
+	err += i2cFlashWritePage(0x0100,1);
+	delay_ms(300);
+	err += i2cFlashReadPage(0x0100,30);
 	compl = 1;
 	while(1);
 }
