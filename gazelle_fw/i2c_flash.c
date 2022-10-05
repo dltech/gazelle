@@ -27,7 +27,7 @@ extern uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE];
 
 int stage = 0;
 int toutTrace[50];
-uint32_t sr21, sr22, sr12, sr13, sr23, sr24, sr14, sr15, sr26, sr16;
+uint32_t sr21, sr22, sr12, sr13, sr23, sr24, sr14, sr15, sr26, sr16, sr17, sr18;
 
 int i2cTxByteInner(uint8_t byte);
 int i2cTxAddrInner(uint8_t addr);
@@ -91,13 +91,18 @@ int i2cTxAddrInner(uint8_t addr)
 
 int i2cTxByteInner(uint8_t byte)
 {
+    sr17 = I2C1_SR1;
     int32_t tOut = 1e6;
     while(((I2C1_SR1 & ITXE) == 0) && ((I2C1_SR1 & AF) == 0) && (--tOut > 0));
     if(tOut < 0) {
         return -1;
     }
+    if((I2C1_SR1 & AF) != 0) {
+        return -2;
+    }
     I2C1_DR = byte;
-    
+
+    sr18 = I2C1_SR1;
     toutTrace[stage] = tOut;
     return 0;
 }
@@ -116,7 +121,7 @@ int i2cRxByteInner(void)
 int i2cTxStop(void)
 {
     int32_t tOut = 1e6;
-    while( ((I2C1_SR1 & BTF) != 0 ) && (--tOut > 0) );
+    while( ((I2C1_SR1 & BTF) == 0 ) && (--tOut > 0) );
     I2C1_CR1 |= STOP;
     if(tOut < 0) {
         return -1;
@@ -170,7 +175,6 @@ uint8_t i2cFlashReadByte(uint16_t address)
 int i2cFlashReadPage(uint16_t startAddress, int size)
 {
     int err;
-    I2C1_CR1 |= IACK;
     // setting page address
     err =  i2cTxAddrInner(ADDR_24CXX_WRITE);
     ++stage;
@@ -181,24 +185,25 @@ int i2cFlashReadPage(uint16_t startAddress, int size)
     err += i2cTxStop();
 
     // starting reading
-    // ++stage;
-    // err += i2cTxAddrInner(ADDR_24CXX_READ);
-    // // reading data through DMA
-    // int tmp;
-    // for(int i=0 ; i<size ; ++i)
-    // {
-    //     ++stage;
-    //     if (i == size - 1) {
-    //         I2C1_CR1 &= ~((uint32_t)IACK);
-    //     }
-    //     tmp = i2cRxByteInner();
-    //     if( tmp < 0 ) {
-    //         --err;
-    //     } else {
-    //         flashToUsbBuffer[i] = (uint8_t)tmp;
-    //     }
-    // }
-    (void)size;
+    ++stage;
+    err += i2cTxAddrInner(ADDR_24CXX_READ);
+    // reading data through DMA
+    I2C1_CR1 |= IACK;
+    int tmp;
+    for(int i=0 ; i<size ; ++i)
+    {
+        ++stage;
+        if (i == size - 1) {
+            I2C1_CR1 &= ~((uint32_t)IACK);
+        }
+        tmp = i2cRxByteInner();
+        if( tmp < 0 ) {
+            --err;
+        } else {
+            flashToUsbBuffer[i] = (uint8_t)tmp;
+        }
+    }
+//    err += i2cTxStop();
 //    DMA1_CNDTR7 = (uint32_t)size;
 //    DMA1_CCR7 |= DMA_EN;
     I2C1_CR1 |= STOP;
@@ -224,7 +229,14 @@ int i2cFlashWritePage(uint16_t startAddress, int size)
     ++stage;
     err += i2cTxByteInner((uint8_t)startAddress);
     ++stage;
+    err += i2cTxByteInner(0xeb);
+    ++stage;
+    err += i2cTxByteInner(0xec);
+    ++stage;
+    err += i2cTxByteInner(0xed);
+    ++stage;
     err += i2cTxByteInner(0xee);
+    ++stage;
     err += i2cTxStop();
 
     // DMA1_CNDTR6 = (uint32_t)size;
