@@ -26,7 +26,7 @@
 #define I2C_PIN2    7
 
 #define PAGE_SIZE           32
-#define HEADER_OFFSET       3
+#define HEADER_OFFSET       2
 #define I2C_BUFFER_SIZE     PAGE_SIZE + HEADER_OFFSET
 
 #define ADDR_24CXX_WRITE    0xa0
@@ -35,6 +35,7 @@
 void i2cFlashInit(void);
 int i2cFlashReadPage(uint16_t startAddress, int size);
 int i2cFlashWritePage(uint16_t startAddress, int size);
-
+int i2cFlashReadPageBlocking(uint16_t startAddress, int size);
+int i2cFlashWritePageBlocking(uint16_t startAddress, int size);
 
 #endif

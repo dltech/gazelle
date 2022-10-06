@@ -39,11 +39,9 @@ int i2cTxAddrInner(uint8_t addr)
     if(tOut <= 0) {
         return -1;
     }
-
     I2C1_SR1 = 0;
     (void)I2C1_SR2;
     (void)I2C1_SR1;
-
     // sending start bit with control sequence
     I2C1_CR1 |= START;
     tOut = 1e6;
@@ -51,7 +49,6 @@ int i2cTxAddrInner(uint8_t addr)
     if(tOut <= 0) {
         return -1;
     }
-
     // sending address with control sequence
     I2C1_DR = addr;
     (void)I2C1_SR1;
@@ -125,7 +122,7 @@ void i2cFlashInit()
     I2C_PORT = CNF_AF_OPEN_DRAIN(I2C_PIN1) | MODE_OUTPUT50(I2C_PIN1)\
              | CNF_AF_OPEN_DRAIN(I2C_PIN2) | MODE_OUTPUT50(I2C_PIN2);
     // clocking of the interface
-    I2C1_CR2 = ITERREN | (36 & FREQ_MSK); // | IDMAEN;
+    I2C1_CR2 = ITERREN | (36 & FREQ_MSK) | IDMAEN;
     I2C1_CCR = F_S | DUTY | I2C400K;
     I2C1_TRISE = TRISE_NS(50);
     I2C1_OAR1 = WTF | ADDR_24CXX_READ;
@@ -136,12 +133,15 @@ void i2cFlashInit()
     DMA1_CPAR6 = (uint32_t) &I2C1_DR;
     DMA1_CMAR6 = (uint32_t) &flashToUsbBuffer;
     DMA1_CNDTR6 = (uint32_t) I2C_BUFFER_SIZE;
-    DMA1_CCR6 = MINC | MSIZE_8BIT | PSIZE_8BIT | PL_VERY_HIGH | TEIE | DIR;
+    DMA1_CCR6 = MINC | MSIZE_8BIT | PSIZE_8BIT | PL_VERY_HIGH | TEIE | DIR | TCIE;
+    NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+
     // rx channel
     DMA1_CPAR7 = (uint32_t) &I2C1_DR;
     DMA1_CMAR7 = (uint32_t) &flashToUsbBuffer;
     DMA1_CNDTR7 = (uint32_t) I2C_BUFFER_SIZE;
     DMA1_CCR7 = MINC | MSIZE_8BIT | PSIZE_8BIT | PL_VERY_HIGH | TEIE;
+    NVIC_EnableIRQ(DMA1_Channel7_IRQn);
 }
 
 
@@ -158,6 +158,26 @@ int i2cFlashReadPage(uint16_t startAddress, int size)
     err += i2cTxAddrInner(ADDR_24CXX_READ);
     // reading data
     I2C1_CR1 |= IACK;
+    DMA1_CNDTR7 = (uint32_t)size;
+    DMA1_CCR7 |= DMA_EN;
+
+    return err;
+}
+
+int i2cFlashReadPageBlocking(uint16_t startAddress, int size)
+{
+    int err;
+    // setting page address
+    err =  i2cTxAddrInner(ADDR_24CXX_WRITE);
+    err += i2cTxByteInner((uint8_t)(startAddress >> 8));
+    err += i2cTxByteInner((uint8_t)startAddress);
+    err += i2cTxStop();
+
+    // starting reading
+    err += i2cTxAddrInner(ADDR_24CXX_READ);
+    // reading data
+    I2C1_CR1 |= IACK;
+
     int tmp;
     for(int i=0 ; i<size ; ++i)
     {
@@ -172,12 +192,6 @@ int i2cFlashReadPage(uint16_t startAddress, int size)
             flashToUsbBuffer[i] = (uint8_t)tmp;
         }
     }
-
-//    err += i2cTxStop();
-//    DMA1_CNDTR7 = (uint32_t)size;
-//    DMA1_CCR7 |= DMA_EN;
-//    I2C1_CR1 |= STOP;
-
     return err;
 }
 
@@ -188,7 +202,31 @@ int i2cFlashWritePage(uint16_t startAddress, int size)
         return -1;
     }
     int err;
+    // prepare transfer buffer first
+    DMA1_CNDTR6 = (uint32_t)size+2;
+    flashToUsbBuffer[0] = (uint8_t)(startAddress >> 8);
+    flashToUsbBuffer[1] = (uint8_t) startAddress;
+    // then initiate a transmittion
     err =  i2cTxAddrInner(ADDR_24CXX_WRITE);
+    // enable dma in order to transmit page
+    DMA1_CCR6 |= DMA_EN;
+
+    return err;
+}
+
+int i2cFlashWritePageBlocking(uint16_t startAddress, int size)
+{
+    if(size > PAGE_SIZE) {
+        return -1;
+    }
+    int err;
+
+    DMA1_CNDTR6 = (uint32_t)size+2;
+    flashToUsbBuffer[0] = (uint8_t)(startAddress >> 8);
+    flashToUsbBuffer[1] = (uint8_t) startAddress;
+
+    err =  i2cTxAddrInner(ADDR_24CXX_WRITE);
+
     err += i2cTxByteInner((uint8_t)(startAddress >> 8));
     err += i2cTxByteInner((uint8_t)startAddress);
     for (int i=0 ; i<size ; ++i) {
@@ -196,14 +234,22 @@ int i2cFlashWritePage(uint16_t startAddress, int size)
     }
     err += i2cTxStop();
 
-    // DMA1_CNDTR6 = (uint32_t)size;
-    // flashToUsbBuffer[0] = ADDR_24CXX_WRITE;
-    // flashToUsbBuffer[1] = (uint8_t)(startAddress >> 8);
-    // flashToUsbBuffer[2] = (uint8_t) startAddress;
-    // DMA1_CCR6 |= DIR | DMA_EN;
-    // I2C1_CR1 |= START;
     return err;
 }
+
+void DMA1_Channel6_Handler(void)
+{
+    I2C1_CR1 |= STOP;
+    DMA1_IFCR = 0xfffffff;
+}
+
+void DMA1_Channel7_Handler(void)
+{
+    I2C1_CR1 &= ~((uint32_t)IACK);
+    I2C1_CR1 |= STOP;
+    DMA1_IFCR = 0xfffffff;
+}
+
 
 void I2C1_EV_Handler(void)
 {
