@@ -20,7 +20,7 @@
  */
 #include <inttypes.h>
 
-#define cfgStrSize  8
+#define cfgStrSize  8+1
 #define numOfCmds   4
 
 void flashInit(void);

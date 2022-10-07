@@ -26,10 +26,10 @@ uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE] = {64, 64, 64, 64, 64, 64, 64, 64,
                                              64, 64, 64, 64, 64, 64, 64, 64,
                                              64, 64};
 volatile int command;
-const uint8_t commands[numOfCmds][cfgStrSize] = {{'m','2','4','c','x','x','w','r'},
-                                                {'m','2','4','c','x','x','r','d'},
-                                                {'w','2','5','q','x','x','w','r'},
-                                                {'w','2','5','q','x','x','r','d'} };
+const uint8_t commands[numOfCmds][cfgStrSize] = {{'m','2','4','c','x','x','w','r',0},
+                                                {'m','2','4','c','x','x','r','d',0},
+                                                {'w','2','5','q','x','x','w','r',0},
+                                                {'w','2','5','q','x','x','r','d',0} };
 
 
 void flashInit()

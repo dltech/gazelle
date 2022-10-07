@@ -38,4 +38,6 @@ int i2cFlashWritePage(uint16_t startAddress, int size);
 int i2cFlashReadPageBlocking(uint16_t startAddress, int size);
 int i2cFlashWritePageBlocking(uint16_t startAddress, int size);
 
+int waitWriteOp(void);
+
 #endif

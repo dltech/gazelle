@@ -221,12 +221,7 @@ int i2cFlashWritePageBlocking(uint16_t startAddress, int size)
     }
     int err;
 
-    DMA1_CNDTR6 = (uint32_t)size+2;
-    flashToUsbBuffer[0] = (uint8_t)(startAddress >> 8);
-    flashToUsbBuffer[1] = (uint8_t) startAddress;
-
     err =  i2cTxAddrInner(ADDR_24CXX_WRITE);
-
     err += i2cTxByteInner((uint8_t)(startAddress >> 8));
     err += i2cTxByteInner((uint8_t)startAddress);
     for (int i=0 ; i<size ; ++i) {
@@ -235,6 +230,19 @@ int i2cFlashWritePageBlocking(uint16_t startAddress, int size)
     err += i2cTxStop();
 
     return err;
+}
+
+int waitWriteOp()
+{
+    int tmp=-2, tout=1e6;
+    while( (tmp == -2) && (--tout > 0) ) {
+        tmp = i2cTxAddrInner(ADDR_24CXX_WRITE);
+        I2C1_CR1 |= STOP;
+    }
+    if( tout <= 0 ) {
+        return -1;
+    }
+    return 0;
 }
 
 void DMA1_Channel6_Handler(void)

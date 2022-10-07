@@ -10,10 +10,11 @@ int compl = 0;
 int main(void) {
 	gazelleInit();
 	for(int i=0 ; i<I2C_BUFFER_SIZE ; ++i) {
-		flashToUsbBuffer[i] = (uint8_t)(i+0x20);
+		flashToUsbBuffer[i] = (uint8_t)(i+0x50);
 	}
-	err += i2cFlashWritePage(0x0100,32);
-	delay_ms(100);
+//	err += i2cFlashWritePage(0x0100,32);
+	err += i2cFlashWritePageBlocking(0x0100,32);
+	err += waitWriteOp();
 
 	for(int i=0 ; i<I2C_BUFFER_SIZE ; ++i) {
 		flashToUsbBuffer[i] = 0;
