@@ -34,7 +34,7 @@ int i2cRxByteInner(void);
 int i2cTxAddrInner(uint8_t addr)
 {
     // wait for a busy state of the interface
-    int32_t tOut = 1e6;
+    int32_t tOut = 1e4;
     while( ((I2C1_SR2 & BUSY) != 0) && (--tOut > 0) );
     if(tOut <= 0) {
         return -1;
@@ -44,7 +44,7 @@ int i2cTxAddrInner(uint8_t addr)
     (void)I2C1_SR1;
     // sending start bit with control sequence
     I2C1_CR1 |= START;
-    tOut = 1e6;
+    tOut = 1e4;
     while( ((I2C1_SR1 & SB) == 0 ) && (--tOut > 0) );
     if(tOut <= 0) {
         return -1;
@@ -71,7 +71,7 @@ int i2cTxAddrInner(uint8_t addr)
 
 int i2cTxByteInner(uint8_t byte)
 {
-    int32_t tOut = 1e6;
+    int32_t tOut = 1e4;
     while(((I2C1_SR1 & ITXE) == 0) && ((I2C1_SR1 & AF) == 0) && (--tOut > 0));
     if(tOut <= 0) {
         return -1;
@@ -86,7 +86,7 @@ int i2cTxByteInner(uint8_t byte)
 
 int i2cRxByteInner(void)
 {
-    int32_t tOut = 1e6;
+    int32_t tOut = 1e4;
     while( ((I2C1_SR1 & IRXNE) == 0 ) && (--tOut > 0) );
     if(tOut <= 0) {
         return -1;
@@ -96,7 +96,7 @@ int i2cRxByteInner(void)
 
 int i2cTxStop(void)
 {
-    int32_t tOut = 1e6;
+    int32_t tOut = 1e4;
     while((((I2C1_SR1 & BTF) == 0) || ((I2C1_SR1 & ITXE) == 0)) && (--tOut > 0));
     I2C1_CR1 |= STOP;
     if(tOut <= 0) {
@@ -234,7 +234,7 @@ int i2cFlashWritePageBlocking(uint16_t startAddress, int size)
 
 int waitWriteOp()
 {
-    int tmp=-2, tout=1e6;
+    int tmp=-2, tout=1e3;
     while( (tmp == -2) && (--tout > 0) ) {
         tmp = i2cTxAddrInner(ADDR_24CXX_WRITE);
         I2C1_CR1 |= STOP;

@@ -325,7 +325,12 @@ void vcpEpRx()
     uint8_t data[64];
     int size = vcpRx(data,64);
     flasher(data, size);
-    // ignoring input data in case of loger
+    // data[size++] = 'p';
+    // data[size++] = 'a';
+    // data[size++] = 'c';
+    // data[size++] = 'k';
+    // vcpTx(data, size);
+
     epRxStatusSet(1, STAT_RX_VALID);
 }
 

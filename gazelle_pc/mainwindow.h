@@ -21,6 +21,8 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public slots:
+    void readFlash(void);
+    void writeFlash(void);
     void openBin(void);
     void saveBin(void);
 public:

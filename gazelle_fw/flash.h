@@ -20,18 +20,26 @@
  */
 #include <inttypes.h>
 
-#define cfgStrSize  8+1
-#define numOfCmds   4
+#define cfgStrSize      8
+#define cmdHeaderOffs   cfgStrSize + 2 + 1
+#define numOfCmds       4
+#define numOfMsg        2
 
 void flashInit(void);
 void flasher(uint8_t *data, int size);
 
-enum{
-    FLASH_DISABLED,
+enum cmdn {
+    FLASH_DISABLED = 0,
     I2C_FLASH_WRITE,
     I2C_FLASH_READ,
     SPI_FLASH_WRITE,
     SPI_FLASH_READ
 };
+
+enum mesgn {
+    MSG_OK = 0,
+    MSG_NO_ACK
+};
+
 
 #endif

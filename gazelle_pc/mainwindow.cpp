@@ -20,8 +20,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // configurating of UI
     // buttons config
-//    connect(read, SIGNAL(released()), this, SLOT());
-//    connect(write, SIGNAL(released()), this, SLOT());
+    connect(read, SIGNAL(released()), this, SLOT());
+    connect(write, SIGNAL(released()), this, SLOT());
     connect(open, SIGNAL(released()), this, SLOT(openBin()));
     connect(save, SIGNAL(released()), this, SLOT(saveBin()));
     read->setText("read");
@@ -112,6 +112,16 @@ void MainWindow::openBin()
 //            qDebug() << "str!";
 //        }
     }
+}
+
+void MainWindow::readFlash()
+{
+
+}
+
+void MainWindow::writeFlash()
+{
+
 }
 
 void MainWindow::saveBin()
