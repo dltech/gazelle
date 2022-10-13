@@ -37,8 +37,8 @@ int gazelleUsb::writeDump(QFile *binary)
 {
     uint8_t data[pageSize[0]];
     addr = 0;
-
-    while(!binary->atEnd()) {
+    binary->seek(0);
+    while((!binary->atEnd()) && (addr < flashSize[type])) {
         binary->read((char*)data, pageSize[type]);
         writePage(addr, data);
         addr += pageSize[type];
@@ -51,19 +51,26 @@ int gazelleUsb::writePage(uint32_t addr, uint8_t *data)
     int ptr = 0;
     switch (type) {
     case 0:
-        std::copy(pack, pack+cfgStrSize,(uint8_t*) writeCmd[type]);
+        std::copy(writeCmd[type], writeCmd[type]+cfgStrSize, pack);
         ptr = cfgStrSize;
         pack[ptr++] = (uint8_t)(addr>>8);
         pack[ptr++] = (uint8_t)addr;
         pack[ptr++] = pageSize[type];
-        std::copy(pack+ptr, pack+ptr+pageSize[type], data);
+        std::copy(data, data+pageSize[type], pack+ptr);
         gazellePort->write((const char*)pack, pageSize[type]+ptr);
-        gazellePort->waitForReadyRead();
-        gazellePort->read((char*)pack, cfgStrSize);
-        if(std::equal(pack, pack+cfgStrSize-1, okMsg)) {
-            return 0;
-        } else {
+        if( !gazellePort->waitForBytesWritten(10) ) {
             return -1;
+        }
+        if( !gazellePort->waitForReadyRead(10) ) {
+            return -1;
+        }
+        gazellePort->read((char*)pack, cfgStrSize);
+        gazellePort->readAll();
+        if(std::equal(pack, pack+cfgStrSize, noAckMsg)) {
+            return -2;
+        }
+        if(std::equal(pack, pack+cfgStrSize, okMsg)) {
+            return 0;
         }
         break;
         case 1:

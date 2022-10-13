@@ -57,23 +57,13 @@ MainWindow::MainWindow(QWidget *parent)
 //    timer->start(1000);
 }
 
-void MainWindow::openBin()
+void MainWindow::viewFile(QFile *file)
 {
-    QString fileName = QFileDialog::getOpenFileName(this,
-        tr("Open binary"), ".", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
-    QFile*  newFile = new QFile(fileName, this);
-    if (!newFile->open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {
-        delete newFile;
-        return;
-    } else {
-        delete binary;
-        binary = newFile;
-    }
     mem->clear();
     unsigned char line[16];
-    qDebug() << fileName;
-    while (!binary->atEnd()) {
-        binary->read((char *)line,16);
+    file->seek(0);
+    while (!file->atEnd()) {
+        file->read((char *)line,16);
         mem->insertPlainText(QString::asprintf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x \n",line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7],line[8],line[9],line[10],line[11],line[12],line[13],line[14],line[15]));
 //        QByteArray byteStr = binary->readLine(16);
 //        mem->insertPlainText(QString("%1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12 %13 %14 %15 %16").arg(byteStr.at(0),2,16,QLatin1Char('0'))
@@ -102,15 +92,31 @@ void MainWindow::openBin()
     }
 }
 
+
+void MainWindow::openBin()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+        tr("Open binary"), ".", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
+    QFile*  newFile = new QFile(fileName, this);
+    if (!newFile->open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {
+        delete newFile;
+        return;
+    } else {
+        delete binary;
+        binary = newFile;
+    }
+    viewFile(binary);
+}
+
 void MainWindow::readFlash()
 {
     QFile*  inputFile = new QFile(tempFilename, this);
-    if (!inputFile->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    if (!inputFile->open(QIODevice::ReadWrite | QIODevice::Truncate)) {
         delete inputFile;
         return;
     }
-    qDebug() << "file ok";
     flasher->readDump(inputFile);
+    viewFile(inputFile);
     inputFile->close();
     delete inputFile;
 }
@@ -125,13 +131,10 @@ void MainWindow::writeFlash()
 
 void MainWindow::saveBin()
 {
-    QString fileName = QFileDialog::getOpenFileName(this,
-        tr("Open binary"), ".", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
+    QString fileName = QFileDialog::getSaveFileName(this,
+        tr("Save as"), "dump.bin", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
     binary = new QFile(fileName, this);
-    if (!binary->open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {
-        delete binary;
-        return;
-    }
+    QFile::copy(tempFilename, fileName);
 }
 
 MainWindow::~MainWindow()

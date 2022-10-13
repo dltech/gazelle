@@ -31,6 +31,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 private:
+    void viewFile(QFile *file);
     Ui::MainWindow *ui;
     // buttons
     QToolBar *toolBar;
