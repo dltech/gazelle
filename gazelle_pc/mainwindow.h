@@ -11,6 +11,8 @@
 #include <QStatusBar>
 #include <QTextEdit>
 #include <QWidget>
+#include <QString>
+#include "gazelleusb.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -45,5 +47,9 @@ private:
     QTimer *timer;
     // file
     QFile *binary;
+    QFile *inputFile;
+    QString tempFilename = "new.bin";
+
+    gazelleUsb *flasher;
 };
 #endif // MAINWINDOW_H

@@ -20,8 +20,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // configurating of UI
     // buttons config
-    connect(read, SIGNAL(released()), this, SLOT());
-    connect(write, SIGNAL(released()), this, SLOT());
+    connect(read, SIGNAL(released()), this, SLOT(readFlash()));
+    connect(write, SIGNAL(released()), this, SLOT(writeFlash()));
     connect(open, SIGNAL(released()), this, SLOT(openBin()));
     connect(save, SIGNAL(released()), this, SLOT(saveBin()));
     read->setText("read");
@@ -49,20 +49,8 @@ MainWindow::MainWindow(QWidget *parent)
     setStatusBar(stBar);
     resize(1024, 768);
 
-    // port settings
-    flaserPort = new QSerialPort(this);
-    QList<QSerialPortInfo> list;
-    list = QSerialPortInfo::availablePorts();
-    for( int i=0 ; i<list.length() ; ++i) {
-        qDebug() << list[i].portName();
-        if( list[i].portName().contains("ACM") ) {
-            flaserPort->setPortName(list[i].portName());
-        }
-    }
-    flaserPort->setBaudRate(9600,QSerialPort::Input);
-    if( flaserPort->open(QIODevice::ReadWrite) ) {
-        stBar->showMessage("ready");
-    }
+    flasher = new gazelleUsb(this);
+    flasher->setFlashType(0);
     // update graphics
 //    timer = new QTimer(this);
 //    connect(timer, SIGNAL(timeout()), this, SLOT(upgrade()));
@@ -116,12 +104,23 @@ void MainWindow::openBin()
 
 void MainWindow::readFlash()
 {
-
+    QFile*  inputFile = new QFile(tempFilename, this);
+    if (!inputFile->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        delete inputFile;
+        return;
+    }
+    qDebug() << "file ok";
+    flasher->readDump(inputFile);
+    inputFile->close();
+    delete inputFile;
 }
 
 void MainWindow::writeFlash()
 {
-
+    if(!binary->exists()) {
+        return;
+    }
+    flasher->writeDump(binary);
 }
 
 void MainWindow::saveBin()
