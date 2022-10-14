@@ -19,6 +19,7 @@
 
 #include "string.h"
 #include "i2c_flash.h"
+#include "spi_flash.h"
 #include "usb_core.h"
 #include "flash.h"
 
@@ -47,6 +48,7 @@ void flashInit()
 {
     // initialization of all interfaces
     i2cFlashInit();
+    spiFlashInit();
 }
 
 int findCmd(uint8_t *inputMsg)
@@ -95,7 +97,7 @@ void flasher(uint8_t *data, int size)
             }
             break;
         case SPI_FLASH_WRITE:
-            
+
             break;
         case SPI_FLASH_READ:
 

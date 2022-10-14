@@ -17,11 +17,21 @@
  * limitations under the License.
  */
 
- void spiFlashInit()
- {
-     // module clocking
-     RCC_APB2ENR |= SPI1EN | IOPAEN;
-     // port config
-     SPI_PORT
+#include "../lib/regs/rcc_regs.h"
+#include "../lib/regs/spi_regs.h"
+#include "spi_flash.h"
 
- }
+void spiFlashInit()
+{
+    // module clocking
+    RCC_APB2ENR |= SPI1EN | IOPAEN;
+    // port config
+    SPI_PORT = CNF_AF_PUSH_PULL(SCK_PIN) | MODE_OUTPUT50(SCK_PIN) | \
+               CNF_AF_PUSH_PULL(MOSI_PIN) | MODE_OUTPUT50(MOSI_PIN) | \
+               CNF_FLOATING(MISO_PIN) | MODE_INPUT(MISO_PIN) | \
+               CNF_PUSH_PULL(NSS_PIN) | MODE_OUTPUT50(NSS_PIN);
+    // 1 mHz master manually controlled SPI config
+    SPI1_CR1  = BIDIMODE | BR_DIV64 | MSTR;
+    SPI1_CR2  = 0;
+    SPI1_CR1 |= SPE;
+}

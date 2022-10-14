@@ -19,6 +19,9 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
+#include "../lib/regs/gpio_regs.h"
+
 #define SPI_PORT    GPIOA_CRL
 
 #define SCK_PIN     5
