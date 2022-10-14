@@ -22,6 +22,10 @@
 #include "usb_core.h"
 #include "flash.h"
 
+int command;
+uint16_t address;
+int payloadSize;
+
 uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE] = {64, 64, 64, 64, 64, 64, 64, 64,
                                              64, 64, 64, 64, 64, 64, 64, 64,
                                              64, 64, 64, 64, 64, 64, 64, 64,
@@ -58,22 +62,25 @@ int findCmd(uint8_t *inputMsg)
     return 0;
 }
 
-int dCmd = 0, dSize = 0, dAddr = 0;
+
 
 void flasher(uint8_t *data, int size)
 {
     if(size < cmdHeaderOffs) return;
     // try to catch new command
-    int command = findCmd(data);
-    uint16_t address = (uint16_t)(((uint16_t)data[cfgStrSize])<<8) + (uint16_t)data[cfgStrSize+1];
-    size = data[cfgStrSize+2];
+    int newCommand = findCmd(data);
+    if(newCommand != 0) {
+        command = newCommand;
+        address = (((uint16_t)data[cfgStrSize])<<8) + (uint16_t)data[cfgStrSize+1];
+        payloadSize = data[cfgStrSize+2];
+    }
     // main of multifunction flasher
     switch (command) {
         case I2C_FLASH_WRITE:
-            for(int i=0 ; i<size ; ++i) {
+            for(int i=0 ; i<payloadSize ; ++i) {
                 flashToUsbBuffer[i] = data[i+cmdHeaderOffs];
             }
-            i2cFlashWritePageBlocking(address,size);
+            i2cFlashWritePageBlocking(address,payloadSize);
             if( waitWriteOp() == 0) {
                 vcpTx((uint8_t*)msg[MSG_OK],cfgStrSize);
             } else {
@@ -82,14 +89,16 @@ void flasher(uint8_t *data, int size)
             break;
         case I2C_FLASH_READ:
             if( i2cFlashReadPageBlocking(address,PAGE_SIZE) == 0 ) {
-                vcpTx(flashToUsbBuffer,size);
+                vcpTx(flashToUsbBuffer,payloadSize);
             } else {
                 vcpTx((uint8_t*)msg[MSG_NO_ACK],cfgStrSize);
             }
             break;
         case SPI_FLASH_WRITE:
+            
             break;
         case SPI_FLASH_READ:
+
             break;
     }
 }

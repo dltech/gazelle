@@ -112,8 +112,6 @@ volatile uint32_t clock1;
 
 void i2cFlashInit()
 {
-    clock = I2C100K;
-    clock1 = TRISE_NS(500);
     // module clocking
     RCC_APB1ENR |= I2C1EN;
     RCC_APB2ENR |= IOPBEN;

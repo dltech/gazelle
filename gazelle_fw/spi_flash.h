@@ -19,6 +19,14 @@
  * limitations under the License.
  */
 
+#define SPI_PORT    GPIOA_CRL
+
+#define SCK_PIN     5
+#define MISO_PIN    6
+#define MOSI_PIN    7
+#define NSS_PIN     3
+
+
 void spiFlashInit(void);
 int spiFlashReadByte(uint16_t address);
 int spiFlashReadPage(uint16_t startAddress, int size);

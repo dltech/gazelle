@@ -16,3 +16,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+ void spiFlashInit()
+ {
+     // module clocking
+     RCC_APB2ENR |= SPI1EN | IOPAEN;
+     // port config
+     SPI_PORT
+
+ }
