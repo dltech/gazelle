@@ -22,17 +22,52 @@
 #include <inttypes.h>
 #include "../lib/regs/gpio_regs.h"
 
-#define SPI_PORT    GPIOA_CRL
+#define TIMEOUT     10e3
+#define SPI_MAX_BYTES_TO_WRITE  256
 
+// interface GPIO config
+#define SPI_PORT    GPIOA_CRL
 #define SCK_PIN     5
 #define MISO_PIN    6
 #define MOSI_PIN    7
 #define NSS_PIN     3
 
+#define NSS_SET_PORT    GPIOA_BSRR
+#define NSS_RESET_PORT  GPIOA_BRR
+#define NSS_GPIO        GPIO3
+
+// command system of windbond flash
+#define WRITE_ENABLE            0x06
+#define VOLATILE_SR_WRITE_EN    0x50
+#define WRITE_DISABLE           0x04
+#define READ_STATUS_REGISTER1   0x05
+#define READ_STATUS_REGISTER2   0x35
+#define WRITE_STATUS_REGISTER   0x01
+#define PAGE_PROGRAM            0x02
+#define SECTOR_ERASE            0x20
+#define BLOCK_ERASE32K          0x52
+#define BLOCK_ERASE64K          0xd8
+#define CHIP_ERASE              0xc7
+#define ERASE_SUSPEND           0x75
+#define ERASE_RESUME            0x7a
+#define POWER_DOWN              0xb9
+#define READ_DATA               0x03
+#define FAST_READ               0x0b
+#define RELEASE_POWERDOWN       0xab
+#define MANUFACTER              0x90
+#define JEDEC_ID                0x9f
+#define READ_UNIQUE_ID          0x4b
+#define READ_SFDP_REGISTER      0x5a
+#define ERASE_SECURITY_REGS     0x44
+#define PROGRAM_SECURITY_REGS   0x42
+#define READ_SECURITY_REGS      0x48
+#define ENABLE_QPI              0x38
+#define ENABLE_RESET            0x66
+#define RESET                   0x99
+
 
 void spiFlashInit(void);
-int spiFlashReadByte(uint16_t address);
-int spiFlashReadPage(uint16_t startAddress, int size);
-
+int spiFlashReadPage(uint16_t address, int size);
+int spiFlashWritePage(uint16_t address, int size);
 
 #endif

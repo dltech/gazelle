@@ -20,7 +20,7 @@
 #include "../lib/regs/rcc_regs.h"
 #include "../lib/regs/i2c_regs.h"
 #include "../lib/regs/dma_regs.h"
-#include "flash.h"
+//#include "flash.h"
 #include "i2c_flash.h"
 
 extern uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE];
