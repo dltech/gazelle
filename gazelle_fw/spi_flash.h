@@ -24,6 +24,7 @@
 
 #define TIMEOUT     10e3
 #define SPI_MAX_BYTES_TO_WRITE  256
+#define W25Q64_SIZE             8388608
 
 // interface GPIO config
 #define SPI_PORT    GPIOA_CRL
@@ -68,6 +69,7 @@
 
 void spiFlashInit(void);
 int spiFlashReadPage(uint16_t address, int size);
+int spiFlashReadAll(void);
 int spiFlashWritePage(uint16_t address, int size);
 
 #endif

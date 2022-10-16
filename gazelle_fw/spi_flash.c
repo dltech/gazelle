@@ -19,6 +19,7 @@
 
 #include "../lib/regs/rcc_regs.h"
 #include "../lib/regs/spi_regs.h"
+#include "usb_core.h"
 //#include "flash.h"
 #include "spi_flash.h"
 
@@ -39,6 +40,47 @@ void spiFlashInit()
     SPI1_CR1 |= SPE;
     NSS_SET_PORT |= NSS_PIN;
 }
+
+int spiFlashReadAll()
+{
+    NSS_RESET_PORT |= NSS_PIN;
+
+    SPI1_DR = READ_DATA;
+    int32_t tOut = TIMEOUT;
+    while( ((SPI1_SR | TXE) == 0) && (--tOut>0) );
+    SPI1_DR = 0x00;
+    tOut = TIMEOUT;
+    while( ((SPI1_SR | TXE) == 0) && (--tOut>0) );
+    SPI1_DR = 0x00;
+    tOut = TIMEOUT;
+    while( ((SPI1_SR | TXE) == 0) && (--tOut>0) );
+    SPI1_DR = 0x00;
+    // tOut = TIMEOUT;
+    // while( ((SPI1_SR | TXE) == 0) && (--tOut>0) );
+    // SPI1_DR = 0x00;
+    // (void)SPI1_DR;
+
+    for(int i=0 ; i<W25Q64_SIZE ; ++i)
+    {
+        if((i > 0) && ((i%VCP_MAX_SIZE) == 0)) {
+            vcpTx(flashToUsbBuffer, VCP_MAX_SIZE);
+        }
+        // dummy write
+        tOut = TIMEOUT;
+        while( ((SPI1_SR | TXE) == 0) && (--tOut>0) );
+        SPI1_DR = 0x00;
+        // receiving
+        tOut = TIMEOUT;
+        while( ((SPI1_SR | RXNE) == 0) && (--tOut>0) );
+        flashToUsbBuffer[i%64] = SPI1_DR;
+    }
+
+    tOut = TIMEOUT;
+    while( ((SPI1_SR | BSY) == 0) && (--tOut>0) );
+    NSS_SET_PORT |= NSS_PIN;
+}
+
+
 
 int spiFlashReadPage(uint16_t address, int size)
 {

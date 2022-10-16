@@ -24,14 +24,10 @@
 #include "flash.h"
 
 int command;
-uint16_t address;
+uint32_t address;
 int payloadSize;
 
-uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE] = {64, 64, 64, 64, 64, 64, 64, 64,
-                                             64, 64, 64, 64, 64, 64, 64, 64,
-                                             64, 64, 64, 64, 64, 64, 64, 64,
-                                             64, 64, 64, 64, 64, 64, 64, 64,
-                                             64, 64};
+uint8_t flashToUsbBuffer[SPI_MAX_BYTES_TO_WRITE] = {0x00};
 
 const uint8_t commands[numOfCmds][cfgStrSize] = {{'m','2','4','c','x','x','w','r'},
                                                 {'m','2','4','c','x','x','r','d'},
@@ -73,8 +69,10 @@ void flasher(uint8_t *data, int size)
     int newCommand = findCmd(data);
     if(newCommand != 0) {
         command = newCommand;
-        address = (((uint16_t)data[cfgStrSize])<<8) + (uint16_t)data[cfgStrSize+1];
-        payloadSize = data[cfgStrSize+2];
+        address = (((uint16_t)data[cfgStrSize])<<16) + \
+                  (((uint16_t)data[cfgStrSize+1])<<8) + \
+                  (uint16_t)data[cfgStrSize+2];
+        payloadSize = data[cfgStrSize+3];
     }
     // main of multifunction flasher
     switch (command) {
@@ -88,6 +86,7 @@ void flasher(uint8_t *data, int size)
             } else {
                 vcpTx((uint8_t*)msg[MSG_NO_ACK],cfgStrSize);
             }
+            command = CMD_FINISHED;
             break;
         case I2C_FLASH_READ:
             if( i2cFlashReadPageBlocking(address,PAGE_SIZE) == 0 ) {
@@ -95,12 +94,19 @@ void flasher(uint8_t *data, int size)
             } else {
                 vcpTx((uint8_t*)msg[MSG_NO_ACK],cfgStrSize);
             }
+            command = CMD_FINISHED;
             break;
         case SPI_FLASH_WRITE:
-
+            for(int i=0 ; i<VCP_MAX_SIZE ; ++i) {
+                flashToUsbBuffer[i] = data[i+cmdHeaderOffs];
+            }
+            
+            spiFlashWritePage(address,size);
+            command = CMD_FINISHED;
             break;
         case SPI_FLASH_READ:
-
+            spiFlashReadAll();
+            command = CMD_FINISHED;
             break;
     }
 }

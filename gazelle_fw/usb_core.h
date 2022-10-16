@@ -21,6 +21,8 @@
 #include "../lib/regs/gpio_regs.h"
 #include <inttypes.h>
 
+#define VCP_MAX_SIZE            64
+
 #define EP0_BUFFER_SIZE         64
 #define EP1_BUFFER_SIZE         64
 #define EP2_BUFFER_SIZE         64

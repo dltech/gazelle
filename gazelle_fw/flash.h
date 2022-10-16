@@ -33,7 +33,8 @@ enum cmdn {
     I2C_FLASH_WRITE,
     I2C_FLASH_READ,
     SPI_FLASH_WRITE,
-    SPI_FLASH_READ
+    SPI_FLASH_READ,
+    CMD_FINISHED;
 };
 
 enum mesgn {
