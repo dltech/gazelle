@@ -31,11 +31,13 @@ uint8_t flashToUsbBuffer[SPI_MAX_BYTES_TO_WRITE] = {0x00};
 
 const uint8_t commands[numOfCmds][cfgStrSize] = {{'m','2','4','c','x','x','w','r'},
                                                 {'m','2','4','c','x','x','r','d'},
+                                                {'w','2','5','q','x','x','e','r'},
                                                 {'w','2','5','q','x','x','w','r'},
                                                 {'w','2','5','q','x','x','r','d'} };
 
 const uint8_t msg[numOfMsg][cfgStrSize] = {{'o','k',' ',' ',' ',' ',' ',0},
-                                           {'n','o',' ','a','c','k',' ',0} };
+                                           {'n','o',' ','a','c','k',' ',0},
+                                           {'s','p','i',' ','e','r','r',0}};
 
 int findCmd(uint8_t *inputMsg);
 
@@ -70,9 +72,9 @@ void flasher(uint8_t *data, int size)
     int newCommand = findCmd(data);
     if(newCommand != 0) {
         command = newCommand;
-        address = (((uint16_t)data[cfgStrSize])<<16) + \
-                  (((uint16_t)data[cfgStrSize+1])<<8) + \
-                  (uint16_t)data[cfgStrSize+2];
+        address = (((uint32_t)data[cfgStrSize])<<16) + \
+                  (((uint32_t)data[cfgStrSize+1])<<8) + \
+                  (uint32_t)data[cfgStrSize+2];
         payloadSize = data[cfgStrSize+3];
         cnt = 0;
     }
@@ -82,7 +84,7 @@ void flasher(uint8_t *data, int size)
             for(int i=0 ; i<payloadSize ; ++i) {
                 flashToUsbBuffer[i] = data[i+cmdHeaderOffs];
             }
-            i2cFlashWritePageBlocking(address,payloadSize);
+            i2cFlashWritePageBlocking((uint16_t)address,payloadSize);
             if( waitWriteOp() == 0) {
                 vcpTx((uint8_t*)msg[MSG_OK],cfgStrSize);
             } else {
@@ -91,23 +93,39 @@ void flasher(uint8_t *data, int size)
             command = CMD_FINISHED;
             break;
         case I2C_FLASH_READ:
-            if( i2cFlashReadPageBlocking(address,PAGE_SIZE) == 0 ) {
+            if( i2cFlashReadPageBlocking((uint16_t)address,PAGE_SIZE) == 0 ) {
                 vcpTx(flashToUsbBuffer,payloadSize);
             } else {
                 vcpTx((uint8_t*)msg[MSG_NO_ACK],cfgStrSize);
             }
             command = CMD_FINISHED;
             break;
-        case SPI_FLASH_WRITE:
-            for(cnt ; (cnt%VCP_MAX_SIZE) != 0 ; ++cnt) {
-                flashToUsbBuffer[cnt] = data[cnt+cmdHeaderOffs];
+        case SPI_FLASH_ERASE:
+            if( spiFlashErase() == 0 ) {
+                vcpTx((uint8_t*)msg[MSG_OK],cfgStrSize);
+            } else {
+                vcpTx((uint8_t*)msg[SPI_ERROR],cfgStrSize);
             }
-
-            spiFlashWritePage(address,size);
             command = CMD_FINISHED;
             break;
+        case SPI_FLASH_WRITE:
+            for( ; (cnt%VCP_MAX_SIZE) != 0 ; ++cnt) {
+                if(cnt < VCP_MAX_SIZE) {
+                    flashToUsbBuffer[cnt] = data[cnt+cmdHeaderOffs];
+                } else {
+                    flashToUsbBuffer[cnt] = data[cnt%VCP_MAX_SIZE];
+                }
+            }
+            if(cnt == payloadSize) {
+                spiFlashWaitForBusy();
+                spiFlashWritePage(address,size);
+                command = CMD_FINISHED;
+            }
+            break;
         case SPI_FLASH_READ:
-            spiFlashReadAll();
+            if( spiFlashReadAll() < 0 ) {
+                vcpTx((uint8_t*)msg[SPI_ERROR],cfgStrSize);
+            }
             command = CMD_FINISHED;
             break;
     }

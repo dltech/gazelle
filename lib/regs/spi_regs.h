@@ -27,7 +27,7 @@
 // Output enable in bidirectional mode
 #define BIDIOE      0x4000
 // Hardware CRC calculation enable
-#define CRCEN       0x2000
+#define SCRCEN       0x2000
 // CRC transfer next
 #define CRCNEXT     0x1000
 // Data frame format

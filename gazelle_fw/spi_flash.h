@@ -91,15 +91,17 @@
 #define W25Q64_LB2  0x10
 #define W25Q64_LB3  0x20
 // Quad enable
-#define W25Q64_SEC  0x02
+#define W25Q64_QE   0x02
 // Status register protect 1
-#define W25Q64_SRP0 0x01
+#define W25Q64_SRP1 0x01
 
 void spiFlashInit(void);
 int spiFlashReadPage(uint32_t address, int size);
 int spiFlashReadAll(void);
 int spiFlashWritePage(uint32_t address, int size);
-void disableWriteProtect(void);
+int spiFlashWaitForBusy(void);
+int spiFlashDisableWriteProtect(void);
+int spiFlashErase(void);
 
 
 

@@ -22,8 +22,8 @@
 
 #define cfgStrSize      8
 #define cmdHeaderOffs   cfgStrSize + 3 + 1
-#define numOfCmds       4
-#define numOfMsg        2
+#define numOfCmds       5
+#define numOfMsg        3
 
 void flashInit(void);
 void flasher(uint8_t *data, int size);
@@ -32,14 +32,16 @@ enum cmdn {
     FLASH_DISABLED = 0,
     I2C_FLASH_WRITE,
     I2C_FLASH_READ,
+    SPI_FLASH_ERASE,
     SPI_FLASH_WRITE,
     SPI_FLASH_READ,
-    CMD_FINISHED;
+    CMD_FINISHED
 };
 
 enum mesgn {
     MSG_OK = 0,
-    MSG_NO_ACK
+    MSG_NO_ACK,
+    SPI_ERROR
 };
 
 

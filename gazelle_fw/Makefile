@@ -10,6 +10,7 @@ SOURCES = main.c
 SOURCES += flash.c
 SOURCES += gazelle.c
 SOURCES += i2c_flash.c
+SOURCES += spi_flash.c
 SOURCES += usb_core.c
 SOURCES += usb_cdc_req.c
 SOURCES += usb_st_req.c
