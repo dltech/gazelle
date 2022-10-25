@@ -21,7 +21,7 @@
 #include <inttypes.h>
 
 #define cfgStrSize      8
-#define cmdHeaderOffs   cfgStrSize + 2 + 1
+#define cmdHeaderOffs   cfgStrSize + 3 + 1
 #define numOfCmds       4
 #define numOfMsg        2
 

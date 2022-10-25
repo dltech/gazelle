@@ -64,6 +64,7 @@ int findCmd(uint8_t *inputMsg)
 
 void flasher(uint8_t *data, int size)
 {
+    static int cnt = 0;
     if(size < cmdHeaderOffs) return;
     // try to catch new command
     int newCommand = findCmd(data);
@@ -73,6 +74,7 @@ void flasher(uint8_t *data, int size)
                   (((uint16_t)data[cfgStrSize+1])<<8) + \
                   (uint16_t)data[cfgStrSize+2];
         payloadSize = data[cfgStrSize+3];
+        cnt = 0;
     }
     // main of multifunction flasher
     switch (command) {
@@ -97,10 +99,10 @@ void flasher(uint8_t *data, int size)
             command = CMD_FINISHED;
             break;
         case SPI_FLASH_WRITE:
-            for(int i=0 ; i<VCP_MAX_SIZE ; ++i) {
-                flashToUsbBuffer[i] = data[i+cmdHeaderOffs];
+            for(cnt ; (cnt%VCP_MAX_SIZE) != 0 ; ++cnt) {
+                flashToUsbBuffer[cnt] = data[cnt+cmdHeaderOffs];
             }
-            
+
             spiFlashWritePage(address,size);
             command = CMD_FINISHED;
             break;

@@ -22,7 +22,7 @@
 #include <inttypes.h>
 #include "../lib/regs/gpio_regs.h"
 
-#define TIMEOUT     10e3
+#define TIMEOUT                 10e3
 #define SPI_MAX_BYTES_TO_WRITE  256
 #define W25Q64_SIZE             8388608
 
@@ -66,10 +66,41 @@
 #define ENABLE_RESET            0x66
 #define RESET                   0x99
 
+// Status register 1 control bits
+// Status register protect 0
+#define W25Q64_SRP0 0x80
+// Sector protect
+#define W25Q64_SEC  0x40
+// Top/bottom protect
+#define W25Q64_TB   0x20
+// Block protect_bits
+#define W25Q64_BP0  0x04
+#define W25Q64_BP1  0x08
+#define W25Q64_BP2  0x10
+// Write enable latch
+#define W25Q64_WEL  0x02
+// Erase/write in progress
+#define W25Q64_BUSY 0x01
+// Status register 2 control bits
+// Suspend status
+#define W25Q64_SUS  0x80
+// Complement protect
+#define W25Q64_CMP  0x40
+// Security register lock bits
+#define W25Q64_LB1  0x08
+#define W25Q64_LB2  0x10
+#define W25Q64_LB3  0x20
+// Quad enable
+#define W25Q64_SEC  0x02
+// Status register protect 1
+#define W25Q64_SRP0 0x01
 
 void spiFlashInit(void);
-int spiFlashReadPage(uint16_t address, int size);
+int spiFlashReadPage(uint32_t address, int size);
 int spiFlashReadAll(void);
-int spiFlashWritePage(uint16_t address, int size);
+int spiFlashWritePage(uint32_t address, int size);
+void disableWriteProtect(void);
+
+
 
 #endif
