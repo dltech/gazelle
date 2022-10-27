@@ -38,6 +38,7 @@ int gazelleUsb::writeDump(QFile *binary)
     uint8_t data[pageSize[0]];
     addr = 0;
     binary->seek(0);
+    prepareWrite();
     while((!binary->atEnd()) && (addr < flashSize[type])) {
         binary->read((char*)data, pageSize[type]);
         writePage(addr, data);
@@ -46,34 +47,107 @@ int gazelleUsb::writeDump(QFile *binary)
     return 0;
 }
 
-int gazelleUsb::writePage(uint32_t addr, uint8_t *data)
+int gazelleUsb::prepareWrite()
 {
-    int ptr = 0;
     switch (type) {
     case 0:
-        std::copy(writeCmd[type], writeCmd[type]+cfgStrSize, pack);
-        ptr = cfgStrSize;
-        pack[ptr++] = (uint8_t)(addr>>8);
-        pack[ptr++] = (uint8_t)addr;
-        pack[ptr++] = pageSize[type];
-        std::copy(data, data+pageSize[type], pack+ptr);
-        gazellePort->write((const char*)pack, pageSize[type]+ptr);
-        if( !gazellePort->waitForBytesWritten(10) ) {
-            return -1;
-        }
-        if( !gazellePort->waitForReadyRead(10) ) {
-            return -1;
-        }
-        gazellePort->read((char*)pack, cfgStrSize);
-        gazellePort->readAll();
-        if(std::equal(pack, pack+cfgStrSize, noAckMsg)) {
-            return -2;
-        }
-        if(std::equal(pack, pack+cfgStrSize, okMsg)) {
-            return 0;
-        }
+        return 0;
         break;
-        case 1:
+    case 1:
+        return eraseSpiFlash();
+        break;
+    default:
+        break;
+    }
+    return -2;
+}
+
+
+int gazelleUsb::writePageI2c(uint32_t addr, uint8_t *data)
+{
+    int ptr = 0;
+    std::copy(writeCmd[type], writeCmd[type]+cfgStrSize, pack);
+    ptr = cfgStrSize;
+    pack[ptr++] = 0x00;
+    pack[ptr++] = (uint8_t)(addr>>8);
+    pack[ptr++] = (uint8_t)addr;
+    pack[ptr++] = pageSize[type];
+    std::copy(data, data+pageSize[type], pack+ptr);
+    gazellePort->write((const char*)pack, pageSize[type]+ptr);
+    if( !gazellePort->waitForBytesWritten(10) ) {
+        return -1;
+    }
+    if( !gazellePort->waitForReadyRead(10) ) {
+        return -1;
+    }
+    gazellePort->read((char*)pack, cfgStrSize);
+    gazellePort->readAll();
+    if(std::equal(pack, pack+cfgStrSize, noAckMsg)) {
+        return -2;
+    }
+    if(std::equal(pack, pack+cfgStrSize, okMsg)) {
+        return 0;
+    }
+    return -2;
+}
+
+int gazelleUsb::writePageSpi(uint32_t addr, uint8_t *data)
+{
+    int ptr = 0;
+    std::copy(writeCmd[type], writeCmd[type]+cfgStrSize, pack);
+    ptr = cfgStrSize;
+    pack[ptr++] = (uint8_t)(addr>>16);
+    pack[ptr++] = (uint8_t)(addr>>8);
+    pack[ptr++] = (uint8_t)addr;
+    pack[ptr++] = pageSize[type];
+    std::copy(data, data+pageSize[type], pack+ptr);
+    gazellePort->write((const char*)pack, pageSize[type]+headerSize);
+    if( !gazellePort->waitForBytesWritten(10) ) {
+        return -1;
+    }
+    if( !gazellePort->waitForReadyRead(10) ) {
+        return -1;
+    }
+    gazellePort->read((char*)pack, cfgStrSize);
+    gazellePort->readAll();
+    if(std::equal(pack, pack+cfgStrSize, spiError)) {
+        return -2;
+    }
+    if(std::equal(pack, pack+cfgStrSize, okMsg)) {
+        return 0;
+    }
+    return -2;
+}
+
+int gazelleUsb::eraseSpiFlash()
+{
+    std::copy(eraseCmd, eraseCmd+cfgStrSize, pack);
+    gazellePort->write((const char*)pack, cfgStrSize);
+    if( !gazellePort->waitForBytesWritten(10) ) {
+        return -1;
+    }
+    if( !gazellePort->waitForReadyRead(10) ) {
+        return -1;
+    }
+    gazellePort->read((char*)pack, cfgStrSize);
+    gazellePort->readAll();
+    if(std::equal(pack, pack+cfgStrSize, spiError)) {
+        return -2;
+    }
+    if(std::equal(pack, pack+cfgStrSize, okMsg)) {
+        return 0;
+    }
+    return -2;
+}
+
+int gazelleUsb::writePage(uint32_t addr, uint8_t *data)
+{
+    switch (type) {
+    case 0:
+        return writePageI2c(addr, data);
+        break;
+    case 1:
+        return writePageSpi(addr, data);
         break;
     default:
         break;
@@ -83,27 +157,78 @@ int gazelleUsb::writePage(uint32_t addr, uint8_t *data)
 
 int gazelleUsb::readDump(QFile *binary)
 {
+    outputFile = binary;
+    switch (type) {
+    case 0:
+        return readDumpI2c();
+        break;
+    case 1:
+        return readDumpSpi();
+        break;
+    default:
+        break;
+    }
+    return -2;
+}
+
+int gazelleUsb::readDumpI2c()
+{
     uint8_t data[pageSize[0]];
     addr = 0;
     while(addr < flashSize[type]) {
-        readPage(addr, data);
+        readPageI2c(addr, data);
         addr += pageSize[type];
-        binary->write((char*)data, pageSize[type]);
+        outputFile->write((char*)data, pageSize[type]);
     }
     return 0;
 }
 
-int gazelleUsb::readPage(uint32_t addr, uint8_t *data)
+int gazelleUsb::readDumpSpi()
+{
+    uint32_t ptr = 0;
+    std::copy(readCmd[type], readCmd[type]+cfgStrSize, pack);
+    ptr = cfgStrSize;
+    pack[ptr++] = 0x00;
+    pack[ptr++] = 0x00;
+    pack[ptr++] = 0x00;
+    pack[ptr++] = 0x00;
+    gazellePort->write((const char*)pack, headerSize);
+    if( !gazellePort->waitForBytesWritten(10) ) {
+        return -1;
+    }
+    int obtained;
+    ptr = 0;
+    if( !gazellePort->waitForReadyRead(1) ) {
+        return -1;
+    }
+    obtained = gazellePort->read((char*)pack, pageSize[type]);
+    if(std::equal(pack, pack+cfgStrSize-1, spiError)) {
+        return -2;
+    }
+    while( ptr < flashSize[type] ) {
+        outputFile->write((char*)pack, obtained);
+        ptr += obtained;
+        if( !gazellePort->waitForReadyRead(1) ) {
+            return -1;
+        }
+        obtained = gazellePort->read((char*)pack, pageSize[type]);
+        qDebug() << obtained;
+    }
+    return 0;
+}
+
+int gazelleUsb::readPageI2c(uint32_t addr, uint8_t *data)
 {
     int ptr = 0;
     switch (type) {
     case 0:
         std::copy(readCmd[type], readCmd[type]+cfgStrSize, pack);
         ptr = cfgStrSize;
+        pack[ptr++] = 0x00;
         pack[ptr++] = (uint8_t)(addr>>8);
         pack[ptr++] = (uint8_t)addr;
         pack[ptr++] = (uint8_t)pageSize[type];
-        gazellePort->write((const char*)pack, ptr);
+        gazellePort->write((const char*)pack, headerSize);
         if( !gazellePort->waitForBytesWritten(10) ) {
             return -1;
         }
@@ -119,6 +244,7 @@ int gazelleUsb::readPage(uint32_t addr, uint8_t *data)
         return 0;
         break;
     case 1:
+        return -3;
         break;
     default:
         break;
