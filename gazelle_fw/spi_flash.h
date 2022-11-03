@@ -22,7 +22,7 @@
 #include <inttypes.h>
 #include "../lib/regs/gpio_regs.h"
 
-#define TIMEOUT                 10e3
+#define TIMEOUT                 10e2
 #define SPI_MAX_BYTES_TO_WRITE  256
 #define W25Q64_SIZE             8388608
 

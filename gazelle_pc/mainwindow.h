@@ -27,6 +27,7 @@ public slots:
     void writeFlash(void);
     void openBin(void);
     void saveBin(void);
+    void setFlash(void);
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();

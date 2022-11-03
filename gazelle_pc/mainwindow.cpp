@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include <QSerialPortInfo>
 #include <QDebug>
+#include <QComboBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -20,17 +21,18 @@ MainWindow::MainWindow(QWidget *parent)
 
     // configurating of UI
     // buttons config
-    connect(read, SIGNAL(released()), this, SLOT(readFlash()));
-    connect(write, SIGNAL(released()), this, SLOT(writeFlash()));
-    connect(open, SIGNAL(released()), this, SLOT(openBin()));
-    connect(save, SIGNAL(released()), this, SLOT(saveBin()));
     read->setText("read");
     write->setText("write");
     open->setText("open hex");
     save->setText("save as");
+    connect(read, SIGNAL(released()), this, SLOT(readFlash()));
+    connect(write, SIGNAL(released()), this, SLOT(writeFlash()));
+    connect(open, SIGNAL(released()), this, SLOT(openBin()));
+    connect(save, SIGNAL(released()), this, SLOT(saveBin()));
     // types of targets
     target->addItem(QString("m24c64"));
     target->addItem(QString("w25q64"));
+    connect(target, SIGNAL(currentIndexChanged(int)), this, SLOT(setFlash()));
     // text redactor
     QFont font("editorFont");
     font.setStyleHint(QFont::TypeWriter);
@@ -49,7 +51,10 @@ MainWindow::MainWindow(QWidget *parent)
     setStatusBar(stBar);
     resize(1024, 768);
 
+
+
     flasher = new gazelleUsb(this);
+    target->setCurrentIndex(0);
     flasher->setFlashType(0);
     // update graphics
 //    timer = new QTimer(this);
@@ -91,7 +96,7 @@ void MainWindow::readFlash()
         delete inputFile;
         return;
     }
-    flasher->readDump(inputFile);
+    qDebug() << "read err" << flasher->readDump(inputFile);
     viewFile(inputFile);
     inputFile->close();
     delete inputFile;
@@ -111,6 +116,12 @@ void MainWindow::saveBin()
         tr("Save as"), "dump.bin", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
     binary = new QFile(fileName, this);
     QFile::copy(tempFilename, fileName);
+}
+
+void MainWindow::setFlash()
+{
+    int type = target->currentIndex();
+    flasher->setFlashType(type);
 }
 
 MainWindow::~MainWindow()

@@ -9,7 +9,7 @@ gazelleUsb::gazelleUsb(QObject *parent)
     QList<QSerialPortInfo> list;
     list = QSerialPortInfo::availablePorts();
     for( int i=0 ; i<list.length() ; ++i) {
-//        qDebug() << list[i].portName();
+        qDebug() << list[i].portName();
         if( list[i].portName().contains("ACM") ) {
             gazellePort->setPortName(list[i].portName());
         }
@@ -193,26 +193,28 @@ int gazelleUsb::readDumpSpi()
     pack[ptr++] = 0x00;
     pack[ptr++] = 0x00;
     gazellePort->write((const char*)pack, headerSize);
-    if( !gazellePort->waitForBytesWritten(10) ) {
-        return -1;
+    if( !gazellePort->waitForBytesWritten(1000) ) {
+        return -4;
+    }
+
+    if( !gazellePort->waitForReadyRead(1000) ) {
+        return -5;
     }
     int obtained;
-    ptr = 0;
-    if( !gazellePort->waitForReadyRead(1) ) {
-        return -1;
-    }
     obtained = gazellePort->read((char*)pack, pageSize[type]);
+    qDebug() << pack[0] << pack[1] << pack[2] << pack[3] << pack[4] << pack[5] << pack[6] << pack[7];
     if(std::equal(pack, pack+cfgStrSize-1, spiError)) {
         return -2;
     }
+    ptr = 0;
     while( ptr < flashSize[type] ) {
         outputFile->write((char*)pack, obtained);
         ptr += obtained;
-        if( !gazellePort->waitForReadyRead(1) ) {
-            return -1;
+        if( !gazellePort->waitForReadyRead(1000) ) {
+            return -6;
         }
         obtained = gazellePort->read((char*)pack, pageSize[type]);
-        qDebug() << obtained;
+        qDebug() << ptr;
     }
     return 0;
 }
