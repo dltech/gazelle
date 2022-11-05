@@ -22,7 +22,7 @@
 #include <inttypes.h>
 #include "../lib/regs/gpio_regs.h"
 
-#define TIMEOUT                 10e2
+#define TIMEOUT                 1e3
 #define SPI_MAX_BYTES_TO_WRITE  256
 #define W25Q64_SIZE             8388608
 
@@ -97,6 +97,7 @@
 
 void spiFlashInit(void);
 int spiFlashReadPage(uint32_t address, int size);
+int spiFlashReadAllOld(void);
 int spiFlashReadAll(void);
 int spiFlashWritePage(uint32_t address, int size);
 int spiFlashWaitForBusy(void);

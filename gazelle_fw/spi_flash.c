@@ -19,17 +19,23 @@
 
 #include "../lib/regs/rcc_regs.h"
 #include "../lib/regs/spi_regs.h"
+#include "../lib/regs/dma_regs.h"
 #include "usb_core.h"
 #include "delay.h"
 //#include "flash.h"
 #include "spi_flash.h"
 
 extern uint8_t flashToUsbBuffer[SPI_MAX_BYTES_TO_WRITE];
+uint8_t null = 0;
 
+int spiStart(uint8_t command, uint8_t data1);
 uint8_t spiReadWrite(uint8_t data);
+int waitForDmaTransfer(void);
+void spiDmaRx(int size);
 int spiFinalize(void);
-int spiStart(uint8_t command);
+int spiWriteByte(uint8_t data);
 
+int tout[1000], tourcnt = 0;
 
 void spiFlashInit()
 {
@@ -41,40 +47,58 @@ void spiFlashInit()
                CNF_FLOATING(MISO_PIN)     | MODE_INPUT(MISO_PIN) | \
                CNF_PUSH_PULL(NSS_PIN)     | MODE_OUTPUT50(NSS_PIN);
     // 1 mHz master manually controlled SPI config
-    SPI1_CR1  = BR_DIV64 | MSTR;
+    SPI1_CR1  = BR_DIV32 | MSTR;
     SPI1_CR2  = 0;
+    // resolving of not working nss pin problem
+    SPI1_CR1 |= SSM | SSI;
+    // switching on the interface
     SPI1_CR1 |= SPE;
     NSS_SET_PORT |= NSS_PIN;
 }
 
-int tout[1000] = { [0 ... 999] = 55 }, tourcnt = 0;
-
-int spiStart(uint8_t command)
+int spiWriteByte(uint8_t data)
 {
     NSS_RESET_PORT |= NSS_PIN;
     // writing
     int tOut = TIMEOUT;
     while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
-    tout[tourcnt++] = tOut;
+    SPI1_DR = data;
+    // waiting for transfer
+    tOut = TIMEOUT;
+    while( ((SPI1_SR & BSY) == 0) && (--tOut>0) );
+    NSS_SET_PORT |= NSS_PIN;
+    if(tOut <= 0) {
+        return -1;
+    }
+    return 0;
+}
+
+int spiStart(uint8_t command, uint8_t data1)
+{
+    NSS_RESET_PORT |= NSS_PIN;
+    int tOut = TIMEOUT;
+    while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
     SPI1_DR = command;
+    tOut = TIMEOUT;
+    while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
+    SPI1_DR = data1;
     if(tOut <= 0) return -1;
     return 0;
 }
 
 uint8_t spiReadWrite(uint8_t data)
 {
-    // writing
-    int tOut = TIMEOUT;
-    while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
-    tout[tourcnt++] = tOut;
-    SPI1_DR = data;
     // receiving
-    tOut = TIMEOUT;
+    int tOut = TIMEOUT;
     while( ((SPI1_SR & RXNE) == 0) && (--tOut>0) );
-    tout[tourcnt++] = tOut;
-    if(tourcnt >= 1000) tourcnt = 0;
-    return (uint8_t)SPI1_DR;
+    uint8_t rxData = (uint8_t)SPI1_DR;
+    // writing
+    tOut = TIMEOUT;
+    while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
+    SPI1_DR = data;
+    return rxData;
 }
+
 
 int spiFinalize()
 {
@@ -84,14 +108,12 @@ int spiFinalize()
     if(tOut <= 0) {
         return -1;
     }
-    tout[tourcnt++] = tOut;
     return 0;
 }
 
 int spiFlashReadPage(uint32_t address, int size)
 {
-    if( spiStart(READ_DATA) < 0 ) return -1;
-    spiReadWrite((uint8_t)(address >> 16));
+    if( spiStart(READ_DATA, (uint8_t)(address >> 16)) < 0 ) return -1;
     spiReadWrite((uint8_t)(address >> 8));
     spiReadWrite((uint8_t)address);
     for(int i=0 ; i<size ; ++i) {
@@ -102,13 +124,13 @@ int spiFlashReadPage(uint32_t address, int size)
 
 int spiFlashReadAll()
 {
-    if( spiStart(READ_DATA) < 0 ) return -1;
+    if( spiStart(READ_DATA, 0x00) < 0 ) return -1;
     spiReadWrite(0x00);
     spiReadWrite(0x00);
     spiReadWrite(0x00);
 
 //    for(int i=0 ; i<(W25Q64_SIZE+1) ; ++i)
-    for(int i=0 ; i<(10000) ; ++i)
+    for(int i=0 ; i<(200) ; ++i)
     {
         if((i > 0) && ((i%VCP_MAX_SIZE) == 0)) {
             vcpTx(flashToUsbBuffer, VCP_MAX_SIZE);
@@ -118,10 +140,10 @@ int spiFlashReadAll()
     return spiFinalize();
 }
 
+
 int spiFlashWritePage(uint32_t address, int size)
 {
-    if( spiStart(PAGE_PROGRAM) < 0 ) return -1;
-    spiReadWrite((uint8_t)(address >> 16));
+    if( spiStart(PAGE_PROGRAM, (uint8_t)(address >> 16)) < 0 ) return -1;
     spiReadWrite((uint8_t)(address >> 8));
     spiReadWrite((uint8_t)address);
     for(int i=0 ; i<size ; ++i) {
@@ -132,12 +154,10 @@ int spiFlashWritePage(uint32_t address, int size)
 
 int spiFlashDisableWriteProtect()
 {
-    if( spiStart(WRITE_ENABLE) < 0 ) return -1;
-    spiFinalize();
+    if( spiWriteByte(WRITE_ENABLE) < 0 ) return -1;
     delay_ms(1);
 
-    if( spiStart(WRITE_STATUS_REGISTER) < 0 ) return -1;
-    spiReadWrite(0x00);
+    if( spiStart(WRITE_STATUS_REGISTER, 0x00) < 0 ) return -1;
     spiReadWrite(0x00);
     return spiFinalize();
 }
@@ -147,7 +167,7 @@ int spiFlashWaitForBusy()
     uint8_t statusReg = 0;
     int tOut = TIMEOUT;
 
-    if( spiStart(READ_STATUS_REGISTER1) < 0 ) return -1;
+    if( spiStart(READ_STATUS_REGISTER1, 0x00) < 0 ) return -1;
     while(((statusReg & W25Q64_BUSY) != 0) && (--tOut>0))
     {
         statusReg = spiReadWrite(0x00);
@@ -167,8 +187,7 @@ int spiFlashWaitForBusy()
 
 int spiFlashErase()
 {
-    if( spiStart(CHIP_ERASE) < 0 ) return -1;
-    spiFinalize();
+    if( spiWriteByte(CHIP_ERASE) < 0 ) return -1;
     rough_delay_us(1);
     return spiFlashWaitForBusy();
 }
