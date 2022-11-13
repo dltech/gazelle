@@ -16,11 +16,13 @@ gazelleUsb::gazelleUsb(QObject *parent)
     }
     gazellePort->setBaudRate(9600,QSerialPort::Input);
     gazellePort->open(QIODevice::ReadWrite);
+    flasher = new gazelleRequest(gazellePort);
 }
 
 gazelleUsb::~gazelleUsb()
 {
     gazellePort->close();
+    delete flasher;
 }
 
 void gazelleUsb::setFlashType(int inType)
@@ -57,7 +59,7 @@ int gazelleUsb::prepareWrite()
         return 0;
         break;
     case 1:
-        return eraseSpiFlash();
+        return flasher->eraseSpi();
         break;
     default:
         break;
@@ -66,91 +68,14 @@ int gazelleUsb::prepareWrite()
 }
 
 
-int gazelleUsb::writePageI2c(uint32_t addr, uint8_t *data)
-{
-    int ptr = 0;
-    std::copy(writeCmd[type], writeCmd[type]+cfgStrSize, pack);
-    ptr = cfgStrSize;
-    pack[ptr++] = 0x00;
-    pack[ptr++] = (uint8_t)(addr>>8);
-    pack[ptr++] = (uint8_t)addr;
-    pack[ptr++] = pageSize[type];
-    std::copy(data, data+pageSize[type], pack+ptr);
-    gazellePort->write((const char*)pack, pageSize[type]+ptr);
-    if( !gazellePort->waitForBytesWritten(10) ) {
-        return -1;
-    }
-    if( !gazellePort->waitForReadyRead(10) ) {
-        return -1;
-    }
-    gazellePort->read((char*)pack, cfgStrSize);
-    gazellePort->readAll();
-    if(std::equal(pack, pack+cfgStrSize, noAckMsg)) {
-        return -2;
-    }
-    if(std::equal(pack, pack+cfgStrSize, okMsg)) {
-        return 0;
-    }
-    return -2;
-}
-
-int gazelleUsb::writePageSpi(uint32_t addr, uint8_t *data)
-{
-    int ptr = 0;
-    std::copy(writeCmd[type], writeCmd[type]+cfgStrSize, pack);
-    ptr = cfgStrSize;
-    pack[ptr++] = (uint8_t)(addr>>16);
-    pack[ptr++] = (uint8_t)(addr>>8);
-    pack[ptr++] = (uint8_t)addr;
-    pack[ptr++] = pageSize[type];
-    std::copy(data, data+pageSize[type], pack+ptr);
-    gazellePort->write((const char*)pack, pageSize[type]+headerSize);
-    if( !gazellePort->waitForBytesWritten(10) ) {
-        return -1;
-    }
-    if( !gazellePort->waitForReadyRead(100) ) {
-        return -1;
-    }
-    gazellePort->read((char*)pack, cfgStrSize);
-    gazellePort->readAll();
-    if(std::equal(pack, pack+cfgStrSize, spiError)) {
-        return -2;
-    }
-    if(std::equal(pack, pack+cfgStrSize, okMsg)) {
-        return 0;
-    }
-    return -2;
-}
-
-int gazelleUsb::eraseSpiFlash()
-{
-    std::copy(eraseCmd, eraseCmd+cfgStrSize, pack);
-    gazellePort->write((const char*)pack, cfgStrSize);
-    if( !gazellePort->waitForBytesWritten(10) ) {
-        return -1;
-    }
-    if( !gazellePort->waitForReadyRead(2000) ) {
-        return -1;
-    }
-    gazellePort->read((char*)pack, cfgStrSize);
-    gazellePort->readAll();
-    if(std::equal(pack, pack+cfgStrSize, spiError)) {
-        return -2;
-    }
-    if(std::equal(pack, pack+cfgStrSize, okMsg)) {
-        return 0;
-    }
-    return -2;
-}
-
 int gazelleUsb::writePage(uint32_t addr, uint8_t *data)
 {
     switch (type) {
     case 0:
-        return writePageI2c(addr, data);
+        return flasher->writeI2cPage(data, addr);
         break;
     case 1:
-        return writePageSpi(addr, data);
+        return flasher->writeSpiPage(data, addr);
         break;
     default:
         break;
@@ -166,7 +91,7 @@ int gazelleUsb::readDump(QFile *binary)
         return readDumpI2c();
         break;
     case 1:
-        return readDumpSpi();
+        return flasher->readAllSpi(binary);
         break;
     default:
         break;
@@ -179,80 +104,10 @@ int gazelleUsb::readDumpI2c()
     uint8_t data[pageSize[0]];
     addr = 0;
     while(addr < flashSize[type]) {
-        readPageI2c(addr, data);
+        flasher->readI2cPage(data, addr);
         addr += pageSize[type];
         outputFile->write((char*)data, pageSize[type]);
     }
+    outputFile->close();
     return 0;
-}
-
-int gazelleUsb::readDumpSpi()
-{
-    uint32_t ptr = 0;
-    std::copy(readCmd[type], readCmd[type]+cfgStrSize, pack);
-    ptr = cfgStrSize;
-    pack[ptr++] = 0x00;
-    pack[ptr++] = 0x00;
-    pack[ptr++] = 0x00;
-    pack[ptr++] = 0x00;
-    gazellePort->write((const char*)pack, headerSize);
-    if( !gazellePort->waitForBytesWritten(1000) ) {
-        return -4;
-    }
-
-    if( !gazellePort->waitForReadyRead(1000) ) {
-        return -5;
-    }
-    int obtained;
-    obtained = gazellePort->read((char*)pack, pageSize[type]);
-    if(std::equal(pack, pack+cfgStrSize-1, spiError)) {
-        return -2;
-    }
-    outputFile->write((char*)pack, obtained);
-    ptr = obtained;
-    while( ptr < flashSize[type] ) {
-        if( !gazellePort->waitForReadyRead(1000) ) {
-            return -6;
-        }
-        obtained = gazellePort->read((char*)pack, pageSize[type]);
-        outputFile->write((char*)pack, obtained);
-        ptr += obtained;
-        qDebug() << Qt::hex << ptr;
-    }
-    return 0;
-}
-
-int gazelleUsb::readPageI2c(uint32_t addr, uint8_t *data)
-{
-    int ptr = 0;
-    switch (type) {
-    case 0:
-        std::copy(readCmd[type], readCmd[type]+cfgStrSize, pack);
-        ptr = cfgStrSize;
-        pack[ptr++] = 0x00;
-        pack[ptr++] = (uint8_t)(addr>>8);
-        pack[ptr++] = (uint8_t)addr;
-        pack[ptr++] = (uint8_t)pageSize[type];
-        gazellePort->write((const char*)pack, headerSize);
-        if( !gazellePort->waitForBytesWritten(10) ) {
-            return -1;
-        }
-        if( !gazellePort->waitForReadyRead(10) ) {
-            return -1;
-        }
-        gazellePort->read((char*)pack, pageSize[type]);
-        gazellePort->readAll();
-        if(std::equal(pack, pack+cfgStrSize-1, noAckMsg)) {
-            return -2;
-        }
-        std::copy(pack, pack + pageSize[type], data);
-        return 0;
-        break;
-    case 1:
-        return -3;
-        break;
-    default:
-        break;
-    }
-    return -2;
 }

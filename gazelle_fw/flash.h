@@ -28,6 +28,12 @@
 void flashInit(void);
 void flasher(uint8_t *data, int size);
 
+typedef struct {
+    int command;
+    uint32_t addr;
+    uint16_t payloadSize;
+} gazelleHeaderTyp;
+
 enum cmdn {
     FLASH_DISABLED = 0,
     I2C_FLASH_WRITE,

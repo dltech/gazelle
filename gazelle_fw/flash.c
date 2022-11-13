@@ -27,6 +27,7 @@ int command;
 uint32_t address;
 int payloadSize;
 
+gazelleHeaderTyp head;
 uint8_t flashToUsbBuffer[SPI_MAX_BYTES_TO_WRITE] = {0x00};
 
 const uint8_t commands[numOfCmds][cfgStrSize] = {{'m','2','4','c','x','x','w','r'},
@@ -40,7 +41,7 @@ const uint8_t msg[numOfMsg][cfgStrSize] = {{'o','k',' ',' ',' ',' ',' ',0},
                                            {'s','p','i',' ','e','r','r',0}};
 
 int findCmd(uint8_t *inputMsg);
-
+int parseHeader(uint8_t *data);
 
 void flashInit()
 {
@@ -62,6 +63,18 @@ int findCmd(uint8_t *inputMsg)
     return 0;
 }
 
+int parseHeader(uint8_t *data)
+{
+    int newCommand = findCmd(data);
+    if(newCommand != 0) {
+        head.command = newCommand;
+        head.addr = (((uint32_t)data[cfgStrSize])<<16) + \
+                  (((uint32_t)data[cfgStrSize+1])<<8) + \
+                   ((uint32_t)data[cfgStrSize+2]);
+        head.payloadSize = (((uint16_t)data[cfgStrSize+3])<<8) + \
+                            ((uint16_t)data[cfgStrSize+4]);
+    }
+}
 
 int ps, trace[100], tracecnt;
 void flasher(uint8_t *data, int size)
@@ -70,16 +83,8 @@ void flasher(uint8_t *data, int size)
     static int endPackCnt = 0;
     if(size < cmdHeaderOffs) return;
     // try to catch new command
-    int newCommand = findCmd(data);
-    if(newCommand != 0) {
-        command = newCommand;
-        address = (((uint32_t)data[cfgStrSize])<<16) + \
-                  (((uint32_t)data[cfgStrSize+1])<<8) + \
-                  (uint32_t)data[cfgStrSize+2];
-        payloadSize = data[cfgStrSize+3];
-        cnt = 0;
-        endPackCnt = 0;
-    }
+    parseHeader(data);
+
     // main of multifunction flasher
     switch (command) {
         case I2C_FLASH_WRITE:

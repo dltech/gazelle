@@ -50,7 +50,7 @@ void spiFlashInit()
                CNF_FLOATING(MISO_PIN)     | MODE_INPUT(MISO_PIN) | \
                CNF_PUSH_PULL(NSS_PIN)     | MODE_OUTPUT50(NSS_PIN);
     // 1 mHz master manually controlled SPI config
-    SPI1_CR1  = BR_DIV32 | MSTR;
+    SPI1_CR1  = BR_DIV128 | MSTR;
     SPI1_CR2  = 0;
     // resolving of not working nss pin problem
     SPI1_CR1 |= SSM | SSI;
