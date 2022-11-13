@@ -38,13 +38,16 @@ int gazelleUsb::writeDump(QFile *binary)
     uint8_t data[pageSize[0]];
     addr = 0;
     binary->seek(0);
-    prepareWrite();
-    while((!binary->atEnd()) && (addr < flashSize[type])) {
+    int err = prepareWrite();
+    qDebug() << "erase error " << err;
+    while((!binary->atEnd()) && (addr < flashSize[type]) && (err >= 0)) {
         binary->read((char*)data, pageSize[type]);
-        writePage(addr, data);
+        err = writePage(addr, data);
         addr += pageSize[type];
+        qDebug() << Qt::hex << addr;
+        qDebug() << "error " << err;
     }
-    return 0;
+    return err;
 }
 
 int gazelleUsb::prepareWrite()
@@ -105,7 +108,7 @@ int gazelleUsb::writePageSpi(uint32_t addr, uint8_t *data)
     if( !gazellePort->waitForBytesWritten(10) ) {
         return -1;
     }
-    if( !gazellePort->waitForReadyRead(10) ) {
+    if( !gazellePort->waitForReadyRead(100) ) {
         return -1;
     }
     gazellePort->read((char*)pack, cfgStrSize);
@@ -126,7 +129,7 @@ int gazelleUsb::eraseSpiFlash()
     if( !gazellePort->waitForBytesWritten(10) ) {
         return -1;
     }
-    if( !gazellePort->waitForReadyRead(10) ) {
+    if( !gazellePort->waitForReadyRead(2000) ) {
         return -1;
     }
     gazellePort->read((char*)pack, cfgStrSize);
@@ -202,19 +205,19 @@ int gazelleUsb::readDumpSpi()
     }
     int obtained;
     obtained = gazellePort->read((char*)pack, pageSize[type]);
-    qDebug() << pack[0] << pack[1] << pack[2] << pack[3] << pack[4] << pack[5] << pack[6] << pack[7];
     if(std::equal(pack, pack+cfgStrSize-1, spiError)) {
         return -2;
     }
-    ptr = 0;
+    outputFile->write((char*)pack, obtained);
+    ptr = obtained;
     while( ptr < flashSize[type] ) {
-        outputFile->write((char*)pack, obtained);
-        ptr += obtained;
         if( !gazellePort->waitForReadyRead(1000) ) {
             return -6;
         }
         obtained = gazellePort->read((char*)pack, pageSize[type]);
-        qDebug() << ptr;
+        outputFile->write((char*)pack, obtained);
+        ptr += obtained;
+        qDebug() << Qt::hex << ptr;
     }
     return 0;
 }

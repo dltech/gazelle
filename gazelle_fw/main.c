@@ -1,25 +1,46 @@
 #include "gazelle.h"
-#include "i2c_flash.h"
-#include "../lib/regs/i2c_regs.h"
 #include "delay.h"
+#include "spi_flash.h"
 
-int err = 0;
-extern uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE];
+int err = 0, err0 = 0;
 int compl = 0;
+uint64_t id;
+
+extern uint8_t flashToUsbBuffer[SPI_MAX_BYTES_TO_WRITE];
 
 int main(void) {
 	gazelleInit();
-// 	for(int i=0 ; i<I2C_BUFFER_SIZE ; ++i) {
-// 		flashToUsbBuffer[i] = (uint8_t)(i+0x50);
-// 	}
-// //	err += i2cFlashWritePage(0x0100,32);
-// 	err += i2cFlashWritePageBlocking(0x0100,32);
-// 	err += waitWriteOp();
-//
-// 	for(int i=0 ; i<I2C_BUFFER_SIZE ; ++i) {
-// 		flashToUsbBuffer[i] = 0;
-// 	}
-// 	err += i2cFlashReadPage(0x0100,32);
-// 	compl = 1;
+	// rough_delay_us(100);
+	// spiFlashWaitForBusy();
+	// rough_delay_us(100);
+	//
+	// delay_ms(100);
+	// spiFlashDisableWriteProtect();
+	// delay_ms(100);
+	//
+	// spiFlashWriteEnable();
+	// spiFlashErase();
+	// rough_delay_us(100);
+	// spiFlashWaitForBusy();
+	// rough_delay_us(100);
+	//
+	// for(int i=0 ; i<128 ; ++i) {
+	// 	flashToUsbBuffer[i] = (uint8_t)(i+0xa0);
+	// }
+	//
+	// err0 =  spiFlashReadStatus();
+	//
+	//
+	//
+	// spiFlashWriteEnable();
+	// spiFlashWritePage(0x000000,32);
+	// rough_delay_us(100);
+	// spiFlashWaitForBusy();
+	// delay_s(1);
+	// err =  spiFlashReadStatus();
+	// rough_delay_us(100);
+	// id = spiFlashReadId();
+
+
 	while(1);
 }

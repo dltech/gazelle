@@ -42,7 +42,7 @@ private:
     static constexpr uint8_t spiError[cfgStrSize] = {'s','p','i',' ','e','r','r',0};
 
     static constexpr int pageSize[nTypes] = {32,256};
-    static constexpr uint32_t flashSize[nTypes] = {0x2000,0xffffff};
+    static constexpr uint32_t flashSize[nTypes] = {0x2000,0x7fffff};
     int type;
     uint32_t addr;
     static constexpr int maxPacketSize = 256+headerSize;

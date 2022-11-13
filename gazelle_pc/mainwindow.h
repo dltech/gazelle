@@ -48,7 +48,7 @@ private:
     // костыль
     QTimer *timer;
     // file
-    QFile *binary;
+    QFile *binary = NULL;
     QFile *inputFile;
     QString tempFilename = "new.bin";
 

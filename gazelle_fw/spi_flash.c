@@ -34,8 +34,11 @@ int waitForDmaTransfer(void);
 void spiDmaRx(int size);
 int spiFinalize(void);
 int spiWriteByte(uint8_t data);
+void qpiGpioInit(void);
+void qpiWrite(uint8_t data);
 
-int tout[1000], tourcnt = 0;
+
+volatile int tout[1000] = {[0 ... 999 ] = 55}, toutcnt = 0;
 
 void spiFlashInit()
 {
@@ -53,20 +56,90 @@ void spiFlashInit()
     SPI1_CR1 |= SSM | SSI;
     // switching on the interface
     SPI1_CR1 |= SPE;
-    NSS_SET_PORT |= NSS_PIN;
+    NSS_SET_PORT |= NSS_GPIO;
+    // configuration of the addictive pins
+    SPI_PORT |= CNF_PUSH_PULL(IO2_PIN)     | MODE_OUTPUT50(IO2_PIN) | \
+                CNF_PUSH_PULL(IO3_PIN)     | MODE_OUTPUT50(IO3_PIN);
+    NSS_SET_PORT   |= WP_GPIO;
+    NSS_RESET_PORT |= HOLD_GPIO;
+}
+
+void qpiGpioInit()
+{
+    SPI_PORT = CNF_PUSH_PULL(IO0_PIN)     | MODE_OUTPUT50(IO0_PIN) | \
+               CNF_PUSH_PULL(IO1_PIN)     | MODE_OUTPUT50(IO1_PIN) | \
+               CNF_PUSH_PULL(IO2_PIN)     | MODE_OUTPUT50(IO2_PIN) | \
+               CNF_PUSH_PULL(IO3_PIN)     | MODE_OUTPUT50(IO3_PIN) | \
+               CNF_PUSH_PULL(SCK_PIN)     | MODE_OUTPUT50(SCK_PIN) | \
+               CNF_PUSH_PULL(NSS_PIN)     | MODE_OUTPUT50(NSS_PIN);
+    NSS_SET_PORT   |= NSS_GPIO;
+    NSS_RESET_PORT |= IO0_PIN | IO1_PIN | IO2_PIN | IO3_PIN | SCK_PIN;
+}
+
+void qpiWrite(uint8_t data)
+{
+    NSS_RESET_PORT |= NSS_GPIO;
+    if(data & (1<<4)) {
+        NSS_SET_PORT |= IO0_GPIO;
+    } else {
+        NSS_RESET_PORT |= IO0_GPIO;
+    }
+    if(data & (1<<5)) {
+        NSS_SET_PORT |= IO1_GPIO;
+    } else {
+        NSS_RESET_PORT |= IO1_GPIO;
+    }
+    if(data & (1<<6)) {
+        NSS_SET_PORT |= IO2_GPIO;
+    } else {
+        NSS_RESET_PORT |= IO2_GPIO;
+    }
+    if(data & (1<<7)) {
+        NSS_SET_PORT |= IO3_GPIO;
+    } else {
+        NSS_RESET_PORT |= IO3_GPIO;
+    }
+    rough_delay_us(100);
+    NSS_SET_PORT |= SCK_GPIO;
+    rough_delay_us(100);
+    if(data & (1<<0)) {
+        NSS_SET_PORT |= IO0_GPIO;
+    } else {
+        NSS_RESET_PORT |= IO0_GPIO;
+    }
+    if(data & (1<<1)) {
+        NSS_SET_PORT |= IO1_GPIO;
+    } else {
+        NSS_RESET_PORT |= IO1_GPIO;
+    }
+    if(data & (1<<2)) {
+        NSS_SET_PORT |= IO2_GPIO;
+    } else {
+        NSS_RESET_PORT |= IO2_GPIO;
+    }
+    if(data & (1<<3)) {
+        NSS_SET_PORT |= IO3_GPIO;
+    } else {
+        NSS_RESET_PORT |= IO3_GPIO;
+    }
+    NSS_RESET_PORT |= SCK_GPIO;
+    rough_delay_us(100);
+    NSS_SET_PORT |= SCK_GPIO;
+    rough_delay_us(100);
+    NSS_RESET_PORT |= SCK_GPIO;
 }
 
 int spiWriteByte(uint8_t data)
 {
-    NSS_RESET_PORT |= NSS_PIN;
+    NSS_RESET_PORT |= NSS_GPIO;
     // writing
     int tOut = TIMEOUT;
     while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
     SPI1_DR = data;
     // waiting for transfer
     tOut = TIMEOUT;
-    while( ((SPI1_SR & BSY) == 0) && (--tOut>0) );
-    NSS_SET_PORT |= NSS_PIN;
+    while( ((SPI1_SR & BSY) != 0) && (--tOut>0) );
+    NSS_SET_PORT |= NSS_GPIO;
     if(tOut <= 0) {
         return -1;
     }
@@ -75,7 +148,7 @@ int spiWriteByte(uint8_t data)
 
 int spiStart(uint8_t command, uint8_t data1)
 {
-    NSS_RESET_PORT |= NSS_PIN;
+    NSS_RESET_PORT |= NSS_GPIO;
     int tOut = TIMEOUT;
     while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
     SPI1_DR = command;
@@ -103,8 +176,8 @@ uint8_t spiReadWrite(uint8_t data)
 int spiFinalize()
 {
     int tOut = TIMEOUT;
-    while( ((SPI1_SR & BSY) == 0) && (--tOut>0) );
-    NSS_SET_PORT |= NSS_PIN;
+    while( ((SPI1_SR & BSY) != 0) && (--tOut>0) );
+    NSS_SET_PORT |= NSS_GPIO;
     if(tOut <= 0) {
         return -1;
     }
@@ -127,10 +200,12 @@ int spiFlashReadAll()
     if( spiStart(READ_DATA, 0x00) < 0 ) return -1;
     spiReadWrite(0x00);
     spiReadWrite(0x00);
+    //escaping dummy bytes
+    spiReadWrite(0x00);
     spiReadWrite(0x00);
 
-//    for(int i=0 ; i<(W25Q64_SIZE+1) ; ++i)
-    for(int i=0 ; i<(200) ; ++i)
+    for(int i=0 ; i<(W25Q64_SIZE+1) ; ++i)
+//    for(int i=0 ; i<(200) ; ++i)
     {
         if((i > 0) && ((i%VCP_MAX_SIZE) == 0)) {
             vcpTx(flashToUsbBuffer, VCP_MAX_SIZE);
@@ -143,6 +218,8 @@ int spiFlashReadAll()
 
 int spiFlashWritePage(uint32_t address, int size)
 {
+    spiWriteByte(WRITE_ENABLE);
+    rough_delay_us(1);
     if( spiStart(PAGE_PROGRAM, (uint8_t)(address >> 16)) < 0 ) return -1;
     spiReadWrite((uint8_t)(address >> 8));
     spiReadWrite((uint8_t)address);
@@ -154,42 +231,125 @@ int spiFlashWritePage(uint32_t address, int size)
 
 int spiFlashDisableWriteProtect()
 {
-    if( spiWriteByte(WRITE_ENABLE) < 0 ) return -1;
-    delay_ms(1);
+    spiWriteByte(ENABLE_RESET);
+    rough_delay_us(1);
+    spiWriteByte(RESET);
+    delay_ms(10);
 
-    if( spiStart(WRITE_STATUS_REGISTER, 0x00) < 0 ) return -1;
+    spiWriteByte(VOLATILE_SR_WRITE_EN);
+    rough_delay_us(1);
+    spiStart(WRITE_STATUS_REGISTER, 0x00);
     spiReadWrite(0x00);
-    return spiFinalize();
+    spiFinalize();
+    delay_ms(30);
+
+    spiWriteByte(WRITE_ENABLE);
+    rough_delay_us(1);
+    spiStart(WRITE_STATUS_REGISTER, 0x00);
+    spiReadWrite(0x00);
+    spiFinalize();
+    delay_ms(30);
+
+    return spiWriteByte(WRITE_ENABLE);
 }
 
 int spiFlashWaitForBusy()
 {
-    uint8_t statusReg = 0;
+    uint8_t statusReg = 0x99;
     int tOut = TIMEOUT;
 
     if( spiStart(READ_STATUS_REGISTER1, 0x00) < 0 ) return -1;
-    while(((statusReg & W25Q64_BUSY) != 0) && (--tOut>0))
-    {
+    spiReadWrite(0x00);
+    spiReadWrite(0x00);
+    while(((statusReg & W25Q64_BUSY) != 0) && (--tOut>0)) {
         statusReg = spiReadWrite(0x00);
     }
     spiFinalize();
-
     if( tOut <= 0 ) {
         return -1;
-    }
-    // switched on write protection features I'm consider like an error
-    if( ((statusReg & (W25Q64_BP0 | W25Q64_BP1 | W25Q64_BP2)) != 0) || \
-        ((statusReg & W25Q64_WEL) == 0) ) {
-        return -2;
     }
     return 0;
 }
 
 int spiFlashErase()
 {
+    spiWriteByte(WRITE_ENABLE);
+    rough_delay_us(1);
     if( spiWriteByte(CHIP_ERASE) < 0 ) return -1;
     rough_delay_us(1);
     return spiFlashWaitForBusy();
+}
+
+int spiFlashErasePage(uint32_t address)
+{
+    spiWriteByte(WRITE_ENABLE);
+    rough_delay_us(1);
+    if( spiStart(SECTOR_ERASE, (uint8_t)(address >> 16)) < 0 ) return -1;
+    spiReadWrite((uint8_t)(address >> 8));
+    spiReadWrite((uint8_t)address);
+    spiFinalize();
+    rough_delay_us(1);
+
+    return spiFlashWaitForBusy();
+}
+
+
+uint16_t spiFlashReadStatus()
+{
+    uint16_t status1, status2;
+    spiStart(READ_STATUS_REGISTER1, 0x00);
+    spiReadWrite(0x00);
+    spiReadWrite(0x00);
+    spiReadWrite(0x00);
+    spiReadWrite(0x00);
+    status1 = spiReadWrite(0x00);
+    spiFinalize();
+    rough_delay_us(100);
+    spiStart(READ_STATUS_REGISTER2, 0x00);
+    spiReadWrite(0x00);
+    spiReadWrite(0x00);
+    spiReadWrite(0x00);
+    spiReadWrite(0x00);
+    status2 = spiReadWrite(0x00);
+    spiFinalize();
+    return (status1 | (uint16_t)(status2 << 8));
+}
+
+uint64_t spiFlashReadId()
+{
+    spiStart(READ_UNIQUE_ID, 0x00);
+    for(int i=0 ; i<4 ; ++i) {
+        spiReadWrite(0x00);
+    }
+    uint64_t id = 0;
+    for(int i=1 ; i<=8 ; ++i) {
+        id |= (uint64_t)(((uint64_t)spiReadWrite(0x00)) << ((8-i)*8));
+    }
+    spiFinalize();
+    return id;
+}
+
+void spiFlashDisableQpi()
+{
+    spiWriteByte(ENABLE_QPI);
+    rough_delay_us(200);
+    qpiGpioInit();
+    rough_delay_us(200);
+    qpiWrite(WRITE_STATUS_REGISTER);
+    qpiWrite(0x00);
+    qpiWrite(0x00);
+    NSS_SET_PORT |= NSS_GPIO;
+    rough_delay_us(200);
+    qpiWrite(DISABLE_QPI);
+    NSS_SET_PORT |= NSS_GPIO;
+    rough_delay_us(200);
+
+    spiFlashInit();
+}
+
+void spiFlashWriteEnable()
+{
+    spiWriteByte(WRITE_ENABLE);
 }
 
 //while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);

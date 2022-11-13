@@ -63,10 +63,11 @@ int findCmd(uint8_t *inputMsg)
 }
 
 
-
+int ps, trace[100], tracecnt;
 void flasher(uint8_t *data, int size)
 {
     static int cnt = 0;
+    static int endPackCnt = 0;
     if(size < cmdHeaderOffs) return;
     // try to catch new command
     int newCommand = findCmd(data);
@@ -77,6 +78,7 @@ void flasher(uint8_t *data, int size)
                   (uint32_t)data[cfgStrSize+2];
         payloadSize = data[cfgStrSize+3];
         cnt = 0;
+        endPackCnt = 0;
     }
     // main of multifunction flasher
     switch (command) {
@@ -90,6 +92,7 @@ void flasher(uint8_t *data, int size)
             } else {
                 vcpTx((uint8_t*)msg[MSG_NO_ACK],cfgStrSize);
             }
+            trace[tracecnt++] = 150;
             command = CMD_FINISHED;
             break;
         case I2C_FLASH_READ:
@@ -106,19 +109,33 @@ void flasher(uint8_t *data, int size)
             } else {
                 vcpTx((uint8_t*)msg[SPI_ERROR],cfgStrSize);
             }
+            trace[tracecnt++] = 99;
             command = CMD_FINISHED;
             break;
         case SPI_FLASH_WRITE:
-            for( ; (cnt%VCP_MAX_SIZE) != 0 ; ++cnt) {
+            ps = payloadSize;
+            if( cnt == 0 ) {
+                endPackCnt = VCP_MAX_SIZE - cmdHeaderOffs;
+            } else {
+                endPackCnt += VCP_MAX_SIZE;
+            }
+            for( ; cnt < endPackCnt ; ++cnt) {
                 if(cnt < VCP_MAX_SIZE) {
                     flashToUsbBuffer[cnt] = data[cnt+cmdHeaderOffs];
                 } else {
                     flashToUsbBuffer[cnt] = data[cnt%VCP_MAX_SIZE];
                 }
             }
+            trace[tracecnt++] = endPackCnt;
+            trace[tracecnt++] = cnt;
+            trace[tracecnt++] = 100500;
             if(cnt == payloadSize) {
-                spiFlashWaitForBusy();
                 spiFlashWritePage(address,size);
+                if( spiFlashWaitForBusy() == 0 ) {
+                    vcpTx((uint8_t*)msg[MSG_OK],cfgStrSize);
+                } else {
+                    vcpTx((uint8_t*)msg[SPI_ERROR],cfgStrSize);
+                }
                 command = CMD_FINISHED;
             }
             break;

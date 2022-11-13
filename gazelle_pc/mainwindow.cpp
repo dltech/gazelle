@@ -67,7 +67,8 @@ void MainWindow::viewFile(QFile *file)
     mem->clear();
     unsigned char line[16];
     file->seek(0);
-    while (!file->atEnd()) {
+    int cnt = 0;
+    while(  (!file->atEnd()) &&  (cnt++ < 2048) ) {
         file->read((char *)line,16);
         mem->insertPlainText(QString::asprintf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x \n",line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7],line[8],line[9],line[10],line[11],line[12],line[13],line[14],line[15]));
     }
@@ -76,14 +77,18 @@ void MainWindow::viewFile(QFile *file)
 
 void MainWindow::openBin()
 {
+    if( binary != NULL ) {
+        delete binary;
+    }
     QString fileName = QFileDialog::getOpenFileName(this,
         tr("Open binary"), ".", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
     QFile*  newFile = new QFile(fileName, this);
-    if (!newFile->open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {
+    if (!newFile->open(QIODevice::ReadOnly)) {
         delete newFile;
+        qDebug() << "error with file";
         return;
     } else {
-        delete binary;
+        qDebug() << "file opened";
         binary = newFile;
     }
     viewFile(binary);
@@ -107,14 +112,14 @@ void MainWindow::writeFlash()
     if(!binary->exists()) {
         return;
     }
-    flasher->writeDump(binary);
+    qDebug() << "write dbg" << flasher->writeDump(binary);
 }
 
 void MainWindow::saveBin()
 {
     QString fileName = QFileDialog::getSaveFileName(this,
         tr("Save as"), "dump.bin", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
-    binary = new QFile(fileName, this);
+//    binary = new QFile(fileName, this);
     QFile::copy(tempFilename, fileName);
 }
 

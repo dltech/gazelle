@@ -25,19 +25,20 @@ INCLUDES  += -I /
 # VENDOR SPECIFIC CODE
 CMSIS_INC  = $(LIB_DIR)/CMSIS_5/CMSIS/Core/Include
 VENDOR_DIR = $(LIB_DIR)/STM32F103_CMSIS
-SOURCES += $(VENDOR_DIR)/startup_stm32f103.c
-SOURCES += $(VENDOR_DIR)/system_stm32f103.c
+SOURCES   += $(VENDOR_DIR)/startup_stm32f103.c
+SOURCES   += $(VENDOR_DIR)/system_stm32f103.c
 INCLUDES  += -I $(VENDOR_DIR)
 INCLUDES  += -I $(CMSIS_INC)
-LD_SCRIPT = $(VENDOR_DIR)/gcc_arm.ld
-DEFINES = ARMCM3
+LD_SCRIPT  = $(VENDOR_DIR)/gcc_arm.ld
+DEFINES    = ARMCM3
 
 # Parameters
 CFLAGS +=-ffunction-sections -fdata-sections
 CFLAGS +=-Wall -Wextra -Werror -Wconversion -Wundef -Wformat=2 -Wformat-truncation
 CFLAGS +=-Wdouble-promotion -Wshadow -Wimplicit-function-declaration
 CFLAGS +=-Wredundant-decls -Wmissing-prototypes -Wstrict-prototypes
-CFLAGS +=-fno-common -Os -ffreestanding
+CFLAGS +=-fno-common -ffreestanding
+#CFLAGS +=-Os
 CFLAGS +=-mcpu=cortex-m3 -mthumb
 CFLAGS +=-mfloat-abi=soft -std=gnu2x
 CFLAGS +=-D$(DEFINES)

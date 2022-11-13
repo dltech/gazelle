@@ -22,7 +22,7 @@
 #include <inttypes.h>
 #include "../lib/regs/gpio_regs.h"
 
-#define TIMEOUT                 1e3
+#define TIMEOUT                 1e7
 #define SPI_MAX_BYTES_TO_WRITE  256
 #define W25Q64_SIZE             8388608
 
@@ -32,10 +32,25 @@
 #define MISO_PIN    6
 #define MOSI_PIN    7
 #define NSS_PIN     3
+#define IO0_PIN     MOSI_PIN
+#define IO1_PIN     MISO_PIN
+#define IO2_PIN     2
+#define IO3_PIN     1
 
 #define NSS_SET_PORT    GPIOA_BSRR
 #define NSS_RESET_PORT  GPIOA_BRR
-#define NSS_GPIO        GPIO3
+#define IO0_GPIO        GPIO(IO0_PIN)
+#define IO1_GPIO        GPIO(IO1_PIN)
+#define IO2_GPIO        GPIO(IO2_PIN)
+#define IO3_GPIO        GPIO(IO3_PIN)
+#define NSS_GPIO        GPIO(NSS_PIN)
+#define SCK_GPIO        GPIO(SCK_PIN)
+#define WP_GPIO         IO2_GPIO
+#define HOLD_GPIO       IO3_GPIO
+
+
+
+
 
 // command system of windbond flash
 #define WRITE_ENABLE            0x06
@@ -63,6 +78,7 @@
 #define PROGRAM_SECURITY_REGS   0x42
 #define READ_SECURITY_REGS      0x48
 #define ENABLE_QPI              0x38
+#define DISABLE_QPI             0xff
 #define ENABLE_RESET            0x66
 #define RESET                   0x99
 
@@ -103,6 +119,11 @@ int spiFlashWritePage(uint32_t address, int size);
 int spiFlashWaitForBusy(void);
 int spiFlashDisableWriteProtect(void);
 int spiFlashErase(void);
+int spiFlashErasePage(uint32_t address);
+uint16_t spiFlashReadStatus(void);
+uint64_t spiFlashReadId(void);
+void spiFlashDisableQpi(void);
+void spiFlashWriteEnable(void);
 
 
 

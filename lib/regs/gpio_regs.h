@@ -158,6 +158,7 @@
 #define GPIO13  0x2000
 #define GPIO14  0x4000
 #define GPIO15  0x8000
+#define GPIO(n) (0x1 << n)
 // IDR Port input data
 #define IDR(n)  (1 << n)
 
