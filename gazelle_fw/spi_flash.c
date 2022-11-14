@@ -133,11 +133,11 @@ int spiWriteByte(uint8_t data)
 {
     NSS_RESET_PORT |= NSS_GPIO;
     // writing
-    int tOut = TIMEOUT;
+    int tOut = SPI_TIMEOUT;
     while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
     SPI1_DR = data;
     // waiting for transfer
-    tOut = TIMEOUT;
+    tOut = SPI_TIMEOUT;
     while( ((SPI1_SR & BSY) != 0) && (--tOut>0) );
     NSS_SET_PORT |= NSS_GPIO;
     if(tOut <= 0) {
@@ -149,10 +149,10 @@ int spiWriteByte(uint8_t data)
 int spiStart(uint8_t command, uint8_t data1)
 {
     NSS_RESET_PORT |= NSS_GPIO;
-    int tOut = TIMEOUT;
+    int tOut = SPI_TIMEOUT;
     while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
     SPI1_DR = command;
-    tOut = TIMEOUT;
+    tOut = SPI_TIMEOUT;
     while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
     SPI1_DR = data1;
     if(tOut <= 0) return -1;
@@ -162,11 +162,11 @@ int spiStart(uint8_t command, uint8_t data1)
 uint8_t spiReadWrite(uint8_t data)
 {
     // receiving
-    int tOut = TIMEOUT;
+    int tOut = SPI_TIMEOUT;
     while( ((SPI1_SR & RXNE) == 0) && (--tOut>0) );
     uint8_t rxData = (uint8_t)SPI1_DR;
     // writing
-    tOut = TIMEOUT;
+    tOut = SPI_TIMEOUT;
     while( ((SPI1_SR & TXE) == 0) && (--tOut>0) );
     SPI1_DR = data;
     return rxData;
@@ -175,7 +175,7 @@ uint8_t spiReadWrite(uint8_t data)
 
 int spiFinalize()
 {
-    int tOut = TIMEOUT;
+    int tOut = SPI_TIMEOUT;
     while( ((SPI1_SR & BSY) != 0) && (--tOut>0) );
     NSS_SET_PORT |= NSS_GPIO;
     if(tOut <= 0) {
@@ -203,14 +203,18 @@ int spiFlashReadAll()
     //escaping dummy bytes
     spiReadWrite(0x00);
     spiReadWrite(0x00);
+    spiReadWrite(0x00);
 
-    for(int i=0 ; i<(W25Q64_SIZE+1) ; ++i)
-//    for(int i=0 ; i<(200) ; ++i)
+    int cnt = 0;
+    flashToUsbBuffer[cnt++] = spiReadWrite(0x00);
+    for(int i=1 ; i<(W25Q64_SIZE+1) ; ++i)
+//    for(int i=1 ; i<(1024) ; ++i)
     {
-        if((i > 0) && ((i%VCP_MAX_SIZE) == 0)) {
+        flashToUsbBuffer[cnt++] = spiReadWrite(0x00);
+        if(cnt == 64) {
             vcpTx(flashToUsbBuffer, VCP_MAX_SIZE);
+            cnt = 0;
         }
-        flashToUsbBuffer[i%64] = spiReadWrite(0x00);
     }
     return spiFinalize();
 }
@@ -256,7 +260,7 @@ int spiFlashDisableWriteProtect()
 int spiFlashWaitForBusy()
 {
     uint8_t statusReg = 0x99;
-    int tOut = TIMEOUT;
+    int tOut = SPI_TIMEOUT;
 
     if( spiStart(READ_STATUS_REGISTER1, 0x00) < 0 ) return -1;
     spiReadWrite(0x00);
@@ -304,7 +308,7 @@ uint16_t spiFlashReadStatus()
     spiReadWrite(0x00);
     status1 = spiReadWrite(0x00);
     spiFinalize();
-    rough_delay_us(100);
+    rough_delay_us(1);
     spiStart(READ_STATUS_REGISTER2, 0x00);
     spiReadWrite(0x00);
     spiReadWrite(0x00);

@@ -22,7 +22,7 @@
 #include <inttypes.h>
 #include "../lib/regs/gpio_regs.h"
 
-#define TIMEOUT                 1e7
+#define SPI_TIMEOUT             1e9
 #define SPI_MAX_BYTES_TO_WRITE  256
 #define W25Q64_SIZE             8388608
 
@@ -47,10 +47,6 @@
 #define SCK_GPIO        GPIO(SCK_PIN)
 #define WP_GPIO         IO2_GPIO
 #define HOLD_GPIO       IO3_GPIO
-
-
-
-
 
 // command system of windbond flash
 #define WRITE_ENABLE            0x06
@@ -113,7 +109,6 @@
 
 void spiFlashInit(void);
 int spiFlashReadPage(uint32_t address, int size);
-int spiFlashReadAllOld(void);
 int spiFlashReadAll(void);
 int spiFlashWritePage(uint32_t address, int size);
 int spiFlashWaitForBusy(void);

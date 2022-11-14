@@ -21,9 +21,10 @@
 #include "../lib/regs/i2c_regs.h"
 #include "../lib/regs/dma_regs.h"
 //#include "flash.h"
+#include "spi_flash.h"
 #include "i2c_flash.h"
 
-extern uint8_t flashToUsbBuffer[I2C_BUFFER_SIZE];
+extern uint8_t flashToUsbBuffer[SPI_MAX_BYTES_TO_WRITE];
 
 int i2cTxByteInner(uint8_t byte);
 int i2cTxAddrInner(uint8_t addr);

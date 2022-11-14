@@ -37,17 +37,14 @@ int gazelleUsb::getFlashType()
 
 int gazelleUsb::writeDump(QFile *binary)
 {
-    uint8_t data[pageSize[0]];
+    uint8_t data[pageSize[type]];
     addr = 0;
     binary->seek(0);
     int err = prepareWrite();
-    qDebug() << "erase error " << err;
     while((!binary->atEnd()) && (addr < flashSize[type]) && (err >= 0)) {
         binary->read((char*)data, pageSize[type]);
         err = writePage(addr, data);
         addr += pageSize[type];
-        qDebug() << Qt::hex << addr;
-        qDebug() << "error " << err;
     }
     return err;
 }
@@ -108,6 +105,5 @@ int gazelleUsb::readDumpI2c()
         addr += pageSize[type];
         outputFile->write((char*)data, pageSize[type]);
     }
-    outputFile->close();
     return 0;
 }

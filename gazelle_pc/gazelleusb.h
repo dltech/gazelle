@@ -26,7 +26,7 @@ private:
 
     static constexpr int nTypes = 2;
     static constexpr int pageSize[nTypes] = {32,256};
-    static constexpr uint32_t flashSize[nTypes] = {0x2000,0x7fffff};
+    static constexpr uint32_t flashSize[nTypes] = {0x2000,0x800000};
     int type;
     uint32_t addr;
     QSerialPort *gazellePort;

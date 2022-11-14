@@ -21,7 +21,7 @@
 #include <inttypes.h>
 
 #define cfgStrSize      8
-#define cmdHeaderOffs   cfgStrSize + 3 + 1
+#define cmdHeaderOffs   cfgStrSize + 3 + 2
 #define numOfCmds       5
 #define numOfMsg        3
 
@@ -32,6 +32,7 @@ typedef struct {
     int command;
     uint32_t addr;
     uint16_t payloadSize;
+    int packCnt;
 } gazelleHeaderTyp;
 
 enum cmdn {

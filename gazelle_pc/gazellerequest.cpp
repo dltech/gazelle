@@ -12,7 +12,7 @@ gazelleRequest::gazelleRequest(QSerialPort *port)
 void gazelleRequest::makeRequest(const uint8_t *msg, uint32_t addr, uint16_t payloadSize, uint8_t *data)
 {
     std::copy(msg, msg+cfgStrSize, pack);
-    int ptr = headerSize;
+    int ptr = cfgStrSize;
     pack[ptr++] = (uint8_t)(addr>>16);
     pack[ptr++] = (uint8_t)(addr>>8);
     pack[ptr++] = (uint8_t)addr;
@@ -20,7 +20,7 @@ void gazelleRequest::makeRequest(const uint8_t *msg, uint32_t addr, uint16_t pay
     pack[ptr++] = (uint8_t)payloadSize;
     packSize = headerSize;
     if(data != NULL) {
-        std::copy(data, data+payloadSize, pack);
+        std::copy(data, data+payloadSize, pack+headerSize);
         packSize += payloadSize;
     }
 }
@@ -28,37 +28,38 @@ void gazelleRequest::makeRequest(const uint8_t *msg, uint32_t addr, uint16_t pay
 bool gazelleRequest::isResponse(const uint8_t *msg)
 {
     if(std::equal(pack, pack+cfgStrSize, msg)) {
-        return false;
+        return true;
     }
-    return true;
+    return false;
 }
 
 int gazelleRequest::readAllSpi(QFile *output)
 {
     makeRequest(readSpiCmd);
+    gazellePort->write((const char*)pack, packSize);
     if( !gazellePort->waitForBytesWritten(typicalDelay) ) {
         return -1;
     }
-    if( !gazellePort->waitForReadyRead(longDelay) ) {
-        return -1;
+    if( !gazellePort->waitForReadyRead(typicalDelay) ) {
+        return -4;
     }
-    int obtained = gazellePort->read((char*)pack, stmUsbPackSize);
+    int obtained = gazellePort->read((char*)pack, maxPacketSize);
     gazellePort->readAll();
     if( isResponse(spiError) ) {
         return -2;
     }
     output->write((char*)pack, obtained);
     int ptr = obtained;
+    int cnt = 0;
     while( ptr < spiFlashSize ) {
-        if( !gazellePort->waitForReadyRead(longDelay) ) {
+        ++cnt;
+        if( !gazellePort->waitForReadyRead(typicalDelay) ) {
             return -4;
         }
-        obtained = gazellePort->read((char*)pack, longDelay);
+        obtained = gazellePort->read((char*)pack, maxPacketSize);
         output->write((char*)pack, obtained);
         ptr += obtained;
-        qDebug() << Qt::hex << ptr;
     }
-    output->close();
     if(ptr == spiFlashSize) {
         return 0;
     }
@@ -68,6 +69,7 @@ int gazelleRequest::readAllSpi(QFile *output)
 int gazelleRequest::readI2cPage(uint8_t *data, uint32_t addr)
 {
     makeRequest(readI2cCmd, addr, i2cPageSize);
+    gazellePort->write((const char*)pack, packSize);
     if( !gazellePort->waitForBytesWritten(typicalDelay) ) {
         return -1;
     }
@@ -90,9 +92,11 @@ int gazelleRequest::writeSpiPage(uint8_t *data, uint32_t addr)
     if( !gazellePort->waitForBytesWritten(typicalDelay) ) {
         return -1;
     }
-    if( !gazellePort->waitForReadyRead(typicalDelay) ) {
+    if( !gazellePort->waitForReadyRead(longDelay) ) {
         return -1;
     }
+    gazellePort->read((char*)pack, cfgStrSize);
+    gazellePort->readAll();
     if( isResponse(spiError) ) {
         return -2;
     }
@@ -130,8 +134,8 @@ int gazelleRequest::eraseSpi()
     if( !gazellePort->waitForBytesWritten(typicalDelay) ) {
         return -1;
     }
-    if( !gazellePort->waitForReadyRead(typicalDelay) ) {
-        return -1;
+    if( !gazellePort->waitForReadyRead(longDelay) ) {
+        return -4;
     }
     gazellePort->read((char*)pack, cfgStrSize);
     gazellePort->readAll();

@@ -38,7 +38,7 @@ CFLAGS +=-Wall -Wextra -Werror -Wconversion -Wundef -Wformat=2 -Wformat-truncati
 CFLAGS +=-Wdouble-promotion -Wshadow -Wimplicit-function-declaration
 CFLAGS +=-Wredundant-decls -Wmissing-prototypes -Wstrict-prototypes
 CFLAGS +=-fno-common -ffreestanding
-#CFLAGS +=-Os
+CFLAGS +=-Os
 CFLAGS +=-mcpu=cortex-m3 -mthumb
 CFLAGS +=-mfloat-abi=soft -std=gnu2x
 CFLAGS +=-D$(DEFINES)
