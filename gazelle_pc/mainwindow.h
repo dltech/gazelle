@@ -12,6 +12,8 @@
 #include <QTextEdit>
 #include <QWidget>
 #include <QString>
+#include <QProgressBar>
+#include <QThread>
 #include "gazelleusb.h"
 
 QT_BEGIN_NAMESPACE
@@ -28,11 +30,17 @@ public slots:
     void openBin(void);
     void saveBin(void);
     void setFlash(void);
+    void updateProgressBar(void);
+    void finishWrite(void);
+    void finishRead(void);
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
 private:
     void viewFile(QFile *file);
+    void disableButtons(void);
+    void enableButtons(void);
     Ui::MainWindow *ui;
     // buttons
     QToolBar *toolBar;
@@ -43,8 +51,7 @@ private:
     QComboBox *target;
     QTextEdit *mem;
     QStatusBar *stBar;
-    // port
-    QSerialPort *flaserPort;
+    QProgressBar *progress;
     // костыль
     QTimer *timer;
     // file
@@ -53,5 +60,7 @@ private:
     QString tempFilename = "new.bin";
 
     gazelleUsb *flasher;
+
+    QThread *flashThread;
 };
 #endif // MAINWINDOW_H

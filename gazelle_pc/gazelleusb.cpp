@@ -1,109 +1,70 @@
 #include "gazelleusb.h"
-#include <QSerialPortInfo>
-#include <QDebug>
+#include "gazellerequest.h"
+
+#include <QTimer>
+
 
 gazelleUsb::gazelleUsb(QObject *parent)
+    : QObject{parent}
 {
-    // port settings
-    gazellePort = new QSerialPort(this);
-    QList<QSerialPortInfo> list;
-    list = QSerialPortInfo::availablePorts();
-    for( int i=0 ; i<list.length() ; ++i) {
-        qDebug() << list[i].portName();
-        if( list[i].portName().contains("ACM") ) {
-            gazellePort->setPortName(list[i].portName());
-        }
-    }
-    gazellePort->setBaudRate(9600,QSerialPort::Input);
-    gazellePort->open(QIODevice::ReadWrite);
-    flasher = new gazelleRequest(gazellePort);
+    flashThread =  new QThread();
+    flashWorker = new GazelleUsbWorker();
+    flashWorker->moveToThread(flashThread);
+//    flashWorker->gazellePort->moveToThread(flashThread);
+    flashThread->start();
+//    flashWorker->createConnection();
+    connect(this,SIGNAL(runRead()),flashWorker,SLOT(readDumpWorker()));
+    connect(this,SIGNAL(runWrite()),flashWorker,SLOT(writeDumpWorker()));
+    connect(flashWorker,SIGNAL(readIsComplete()),this,SIGNAL(readComplete()));
+    connect(flashWorker,SIGNAL(writeIsComplete()),this,SIGNAL(writeComplete()));
+    connect(flashWorker,SIGNAL(yetAnotherEvent()),this,SIGNAL(anotherEvent()));
+    connect(this,SIGNAL(createWorker()),flashWorker,SLOT(createConnection()));
+    connect(this,SIGNAL(destroyWorker()),flashWorker,SLOT(destroyConnection()));
+    emit createWorker();
 }
 
 gazelleUsb::~gazelleUsb()
 {
-    gazellePort->close();
-    delete flasher;
+    emit destroyWorker();
+    flashThread->quit();
+    flashThread->wait(100);
+    delete flashWorker;
+    delete flashThread;
+}
+
+QString* gazelleUsb::getMessage()
+{
+    return flashWorker->message;
+}
+
+int gazelleUsb::getProgress()
+{
+    if(flashWorker->isReadingSpi) {
+        return flashWorker->flasher->getReadSpiProgress();
+    }
+    return flashWorker->progress;
 }
 
 void gazelleUsb::setFlashType(int inType)
 {
-    type = inType;
+    flashWorker->type = inType;
+
 }
 
 int gazelleUsb::getFlashType()
 {
-    return type;
+    return flashWorker->type;
 }
 
-int gazelleUsb::writeDump(QFile *binary)
+void gazelleUsb::writeDump(QFile *bin)
 {
-    uint8_t data[pageSize[type]];
-    addr = 0;
-    binary->seek(0);
-    int err = prepareWrite();
-    while((!binary->atEnd()) && (addr < flashSize[type]) && (err >= 0)) {
-        binary->read((char*)data, pageSize[type]);
-        err = writePage(addr, data);
-        addr += pageSize[type];
-    }
-    return err;
+    flashWorker->binary = bin;
+    emit runWrite();
 }
 
-int gazelleUsb::prepareWrite()
+void gazelleUsb::readDump(QFile *bin)
 {
-    switch (type) {
-    case 0:
-        return 0;
-        break;
-    case 1:
-        return flasher->eraseSpi();
-        break;
-    default:
-        break;
-    }
-    return -2;
+    flashWorker->binary = bin;
+    emit runRead();
 }
 
-
-int gazelleUsb::writePage(uint32_t addr, uint8_t *data)
-{
-    switch (type) {
-    case 0:
-        return flasher->writeI2cPage(data, addr);
-        break;
-    case 1:
-        return flasher->writeSpiPage(data, addr);
-        break;
-    default:
-        break;
-    }
-    return -2;
-}
-
-int gazelleUsb::readDump(QFile *binary)
-{
-    outputFile = binary;
-    switch (type) {
-    case 0:
-        return readDumpI2c();
-        break;
-    case 1:
-        return flasher->readAllSpi(binary);
-        break;
-    default:
-        break;
-    }
-    return -2;
-}
-
-int gazelleUsb::readDumpI2c()
-{
-    uint8_t data[pageSize[0]];
-    addr = 0;
-    while(addr < flashSize[type]) {
-        flasher->readI2cPage(data, addr);
-        addr += pageSize[type];
-        outputFile->write((char*)data, pageSize[type]);
-    }
-    return 0;
-}

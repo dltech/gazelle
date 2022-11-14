@@ -2,36 +2,39 @@
 #define GAZELLEUSB_H
 
 #include <QObject>
-#include <QSerialPort>
-#include <QFileDialog>
-#include "gazellerequest.h"
+#include <QFile>
+#include <QThread>
+#include "gazelleusbworker.h"
 
 class gazelleUsb : public QObject
 {
     Q_OBJECT
 
 public:
-    gazelleUsb(QObject *parent = 0);
+    explicit gazelleUsb(QObject *parent = nullptr);
     ~gazelleUsb();
     int getFlashType();
     void setFlashType(int inType);
 
-    int writeDump(QFile *binary);
-    int readDump(QFile *binary);
+    void writeDump(QFile *bin);
+    void readDump(QFile *bin);
+
+    QString* getMessage(void);
+    int getProgress(void);
+signals:
+    void readComplete(void);
+    void writeComplete(void);
+    void anotherEvent(void);
 
 private:
-    int prepareWrite(void);
-    int writePage(uint32_t address, uint8_t *data);
-    int readDumpI2c();
+    GazelleUsbWorker *flashWorker;
+    QThread *flashThread;
 
-    static constexpr int nTypes = 2;
-    static constexpr int pageSize[nTypes] = {32,256};
-    static constexpr uint32_t flashSize[nTypes] = {0x2000,0x800000};
-    int type;
-    uint32_t addr;
-    QSerialPort *gazellePort;
-    QFile *outputFile;
-    gazelleRequest *flasher;
+signals:
+    void runWrite(void);
+    void runRead(void);
+    void createWorker(void);
+    void destroyWorker(void);
 };
 
 #endif // GAZELLEUSB_H

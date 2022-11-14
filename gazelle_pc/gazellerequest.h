@@ -7,15 +7,18 @@
 
 
 
-class gazelleRequest
+class gazelleRequest : public QObject
 {
+
 public:
     gazelleRequest(QSerialPort *port);
+    virtual ~gazelleRequest() {};
     int readAllSpi(QFile *output);
     int readI2cPage(uint8_t *data, uint32_t addr);
     int writeSpiPage(uint8_t *data, uint32_t addr);
     int writeI2cPage(uint8_t *data, uint32_t addr);
     int eraseSpi(void);
+    int getReadSpiProgress(void);
 
 private:
     void makeRequest(const uint8_t *msg, uint32_t addr = 0, uint16_t payloadSize = 0, uint8_t *data = NULL);
@@ -23,7 +26,7 @@ private:
 
     // serial port with it's parameters
     QSerialPort *gazellePort;
-    static constexpr int typicalDelay = 10;
+    static constexpr int typicalDelay = 500;
     static constexpr int longDelay = 30000;
 
     // target sizes
@@ -51,6 +54,8 @@ private:
     static constexpr uint8_t readI2cCmd[cfgStrSize]  = {'m','2','4','c','x','x','r','d'};
     static constexpr uint8_t noAckMsg[cfgStrSize]    = {'n','o',' ','a','c','k',' ',0};
     static constexpr uint8_t okMsg[cfgStrSize]       = {'o','k',' ',' ',' ',' ',' ',0};
+
+    int readSpiProgress;
 };
 
 #endif // GAZELLEREQUEST_H

@@ -33,6 +33,11 @@ bool gazelleRequest::isResponse(const uint8_t *msg)
     return false;
 }
 
+int gazelleRequest::getReadSpiProgress()
+{
+    return readSpiProgress;
+}
+
 int gazelleRequest::readAllSpi(QFile *output)
 {
     makeRequest(readSpiCmd);
@@ -59,6 +64,7 @@ int gazelleRequest::readAllSpi(QFile *output)
         obtained = gazellePort->read((char*)pack, maxPacketSize);
         output->write((char*)pack, obtained);
         ptr += obtained;
+        readSpiProgress = ptr*100/spiFlashSize;
     }
     if(ptr == spiFlashSize) {
         return 0;

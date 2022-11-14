@@ -9,6 +9,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    this->setWindowTitle("gazelle usb flasher");
     // all objects of UI
     toolBar = new QToolBar(this);
     read = new QPushButton(this);
@@ -18,6 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
     target = new QComboBox(this);
     mem = new QTextEdit(this);
     stBar = new QStatusBar(this);
+    progress = new QProgressBar(this);
 
     // configurating of UI
     // buttons config
@@ -33,6 +35,9 @@ MainWindow::MainWindow(QWidget *parent)
     target->addItem(QString("m24c64"));
     target->addItem(QString("w25q64"));
     connect(target, SIGNAL(currentIndexChanged(int)), this, SLOT(setFlash()));
+    //progressbar
+    progress->setMinimum(0);
+    progress->setMaximum(100);
     // text redactor
     QFont font("editorFont");
     font.setStyleHint(QFont::TypeWriter);
@@ -46,20 +51,22 @@ MainWindow::MainWindow(QWidget *parent)
     toolBar->addWidget(open);
     toolBar->addWidget(save);
     toolBar->addWidget(target);
+    toolBar->addWidget(progress);
     addToolBar(toolBar);
     setCentralWidget(mem);
     setStatusBar(stBar);
     resize(1024, 768);
 
-
-
-    flasher = new gazelleUsb(this);
+    flasher = new gazelleUsb();
     target->setCurrentIndex(0);
     flasher->setFlashType(0);
-    // update graphics
-//    timer = new QTimer(this);
-//    connect(timer, SIGNAL(timeout()), this, SLOT(upgrade()));
-//    timer->start(1000);
+    // update progress bar
+    timer = new QTimer(this);
+    connect(timer, SIGNAL(timeout()), this, SLOT(updateProgressBar()));
+    connect(flasher, SIGNAL(anotherEvent()), this, SLOT(updateProgressBar()));
+    connect(flasher,SIGNAL(writeComplete()), this, SLOT(finishWrite()));
+    connect(flasher,SIGNAL(readComplete()), this, SLOT(finishRead()));
+    updateProgressBar();
 }
 
 void MainWindow::viewFile(QFile *file)
@@ -74,45 +81,75 @@ void MainWindow::viewFile(QFile *file)
     }
 }
 
+void MainWindow::disableButtons()
+{
+    read->setDisabled(true);
+    write->setDisabled(true);
+    open->setDisabled(true);
+    save->setDisabled(true);
+    target->setDisabled(true);
+}
+
+void MainWindow::enableButtons()
+{
+    read->setDisabled(false);
+    write->setDisabled(false);
+    open->setDisabled(false);
+    save->setDisabled(false);
+    target->setDisabled(false);
+}
 
 void MainWindow::openBin()
 {
     if( binary != NULL ) {
+        binary->close();
         delete binary;
+        binary = NULL;
     }
     QString fileName = QFileDialog::getOpenFileName(this,
         tr("Open binary"), ".", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
-    QFile*  newFile = new QFile(fileName, this);
-    if (!newFile->open(QIODevice::ReadOnly)) {
-        delete newFile;
-        qDebug() << "error with file";
+    binary = new QFile(fileName, this);
+    if (!binary->open(QIODevice::ReadOnly)) {
+        delete binary;
+        binary = NULL;
+        stBar->showMessage("file not found");
         return;
     } else {
-        qDebug() << "file opened";
-        binary = newFile;
+        stBar->showMessage(fileName.append(" opened"));
     }
     viewFile(binary);
 }
 
 void MainWindow::readFlash()
 {
-    QFile*  inputFile = new QFile(tempFilename, this);
-    if (!inputFile->open(QIODevice::ReadWrite | QIODevice::Truncate)) {
-        delete inputFile;
+    if(binary != NULL) {
+        binary->close();
+        delete binary;
+        binary= NULL;
+    }
+    binary = new QFile(tempFilename, this);
+    if (!binary->open(QIODevice::ReadWrite | QIODevice::Truncate)) {
+        delete binary;
+        binary = NULL;
         return;
     }
-    qDebug() << "read err" << flasher->readDump(inputFile);
-    viewFile(inputFile);
-    inputFile->close();
-    delete inputFile;
+    timer->start(300);
+    disableButtons();
+    flasher->readDump(binary);
+//    viewFile(inputFile);
 }
 
 void MainWindow::writeFlash()
 {
+    if(binary == NULL) {
+        return;
+    }
     if(!binary->exists()) {
         return;
     }
-    qDebug() << "write dbg" << flasher->writeDump(binary);
+    timer->start(300);
+    disableButtons();
+    flasher->writeDump(binary);
 }
 
 void MainWindow::saveBin()
@@ -129,7 +166,31 @@ void MainWindow::setFlash()
     flasher->setFlashType(type);
 }
 
+void MainWindow::updateProgressBar()
+{
+    progress->setValue(flasher->getProgress());
+    stBar->showMessage(*flasher->getMessage());
+}
+
+void MainWindow::finishWrite()
+{
+    binary->close();
+    updateProgressBar();
+    timer->stop();
+    enableButtons();
+}
+
+void MainWindow::finishRead()
+{
+    viewFile(binary);
+    binary->close();
+    updateProgressBar();
+    timer->stop();
+    enableButtons();
+}
+
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete flasher;
 }

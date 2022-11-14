@@ -11,12 +11,14 @@ CONFIG += c++17
 SOURCES += \
     gazellerequest.cpp \
     gazelleusb.cpp \
+    gazelleusbworker.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
     gazellerequest.h \
     gazelleusb.h \
+    gazelleusbworker.h \
     mainwindow.h
 
 FORMS += \
