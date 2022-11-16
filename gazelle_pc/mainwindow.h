@@ -10,6 +10,7 @@
 #include <QToolBar>
 #include <QStatusBar>
 #include <QTextEdit>
+#include <QScrollBar>
 #include <QWidget>
 #include <QString>
 #include <QProgressBar>
@@ -50,17 +51,16 @@ private:
     QPushButton *save;
     QComboBox *target;
     QTextEdit *mem;
+    QScrollBar *textScroll;
     QStatusBar *stBar;
     QProgressBar *progress;
-    // костыль
+    // timer for udatind interface
     QTimer *timer;
     // file
     QFile *binary = NULL;
-    QFile *inputFile;
     QString tempFilename = "new.bin";
+    QString currentDir = ".";
 
     gazelleUsb *flasher;
-
-    QThread *flashThread;
 };
 #endif // MAINWINDOW_H

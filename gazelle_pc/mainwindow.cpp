@@ -18,6 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
     save = new QPushButton(this);
     target = new QComboBox(this);
     mem = new QTextEdit(this);
+//    textScroll = new QScrollBar(this);
     stBar = new QStatusBar(this);
     progress = new QProgressBar(this);
 
@@ -41,9 +42,14 @@ MainWindow::MainWindow(QWidget *parent)
     // text redactor
     QFont font("editorFont");
     font.setStyleHint(QFont::TypeWriter);
+    font.setStyleHint(QFont::Monospace);
     font.setPointSize(10);
     mem->setCurrentFont(font);
     mem->setReadOnly(true);
+//    textScroll->setMinimum(0);
+//    textScroll->setMaximum(1000);
+//    textScroll->setScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+//    mem->addScrollBarWidget(textScroll, Qt::AlignRight);
 
     // ading all stuff to main window
     toolBar->addWidget(read);
@@ -55,7 +61,7 @@ MainWindow::MainWindow(QWidget *parent)
     addToolBar(toolBar);
     setCentralWidget(mem);
     setStatusBar(stBar);
-    resize(1024, 768);
+    resize(640, 480);
 
     flasher = new gazelleUsb();
     target->setCurrentIndex(0);
@@ -77,7 +83,13 @@ void MainWindow::viewFile(QFile *file)
     int cnt = 0;
     while(  (!file->atEnd()) &&  (cnt++ < 2048) ) {
         file->read((char *)line,16);
-        mem->insertPlainText(QString::asprintf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x \n",line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7],line[8],line[9],line[10],line[11],line[12],line[13],line[14],line[15]));
+        mem->setTextColor(QColor(QColorConstants::LightGray));
+        mem->insertPlainText(QString::asprintf("%08x  ",cnt));
+        mem->setTextColor(QColor(QColorConstants::Black));
+        mem->insertPlainText(QString::asprintf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7],line[8],line[9],line[10],line[11],line[12],line[13],line[14],line[15]));
+        mem->setTextColor(QColor(QColorConstants::LightGray));
+        for(int i=0 ; i<16 ; ++i) if((line[i]<0x20) || (line[i]>0x7e))  line[i] = '.';
+        mem->insertPlainText(QString::asprintf("  %c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c \n",line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7],line[8],line[9],line[10],line[11],line[12],line[13],line[14],line[15]));
     }
 }
 
@@ -106,8 +118,12 @@ void MainWindow::openBin()
         delete binary;
         binary = NULL;
     }
-    QString fileName = QFileDialog::getOpenFileName(this,
-        tr("Open binary"), ".", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
+    QFileDialog chooseFile(this, tr("Open binary"), currentDir, tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
+    chooseFile.setFileMode(QFileDialog::ExistingFile);
+    if( !chooseFile.exec() ) {
+        return;
+    }
+    QString fileName = chooseFile.selectedFiles().at(0);
     binary = new QFile(fileName, this);
     if (!binary->open(QIODevice::ReadOnly)) {
         delete binary;
@@ -117,6 +133,8 @@ void MainWindow::openBin()
     } else {
         stBar->showMessage(fileName.append(" opened"));
     }
+    currentDir.clear();
+    currentDir.append(chooseFile.directory().path());
     viewFile(binary);
 }
 
@@ -136,7 +154,6 @@ void MainWindow::readFlash()
     timer->start(300);
     disableButtons();
     flasher->readDump(binary);
-//    viewFile(inputFile);
 }
 
 void MainWindow::writeFlash()
@@ -154,10 +171,16 @@ void MainWindow::writeFlash()
 
 void MainWindow::saveBin()
 {
-    QString fileName = QFileDialog::getSaveFileName(this,
-        tr("Save as"), "dump.bin", tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
-//    binary = new QFile(fileName, this);
+    QFileDialog chooseFile(this, tr("Save as"), currentDir, tr("Binary files (*.bin *.hex);;Text files (*.txt);;All (*)"));
+    chooseFile.setAcceptMode(QFileDialog::AcceptSave);
+    chooseFile.selectFile("dump.bin");
+    if( !chooseFile.exec() ) {
+        return;
+    }
+    QString fileName = chooseFile.selectedFiles().at(0);
     QFile::copy(tempFilename, fileName);
+    currentDir.clear();
+    currentDir.append(chooseFile.directory().path());
 }
 
 void MainWindow::setFlash()

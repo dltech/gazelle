@@ -22,6 +22,10 @@
 #include "spi_flash.h"
 #include "usb_core.h"
 #include "flash.h"
+#include "../lib/regs/rcc_regs.h"
+#include "../lib/regs/tim_regs.h"
+#include "../lib/regs/gpio_regs.h"
+#include "../lib/STM32F103_CMSIS/stm32f103.h"
 
 gazelleHeaderTyp head;
 uint8_t flashToUsbBuffer[SPI_MAX_BYTES_TO_WRITE] = {0x00};
@@ -38,12 +42,46 @@ const uint8_t msg[numOfMsg][cfgStrSize] = {{'o','k',' ',' ',' ',' ',' ',0},
 
 int findCmd(uint8_t *inputMsg);
 void parseHeader(uint8_t *data);
+void indicatorInit(void);
+void indicatorOn(void);
+void indicatorOff(void);
+
+
+void indicatorInit()
+{
+    RCC_APB1ENR |= TIM2EN;
+    GPIOA_CRL |= CNF_AF_PUSH_PULL(1) | MODE_OUTPUT50(1);
+    TIM2_CR1  = CKD_CK_INT;
+    TIM2_PSC  = 0xfff0;
+    TIM2_ARR  = 300;
+    TIM2_CCR2  = 100;
+    TIM2_CCMR1 = OC2M_PWM1 | OC2PE;
+    TIM2_CCER  = CC2E;
+    TIM2_DIER = UIE;
+    TIM2_EGR |= UG;
+}
+
+void indicatorOn()
+{
+//    TIM2_EGR |= UG;
+    TIM2_CR1 = CEN;
+}
+
+void indicatorOff()
+{
+//    TIM2_CR1 &= ~((uint32_t)CEN);
+//    TIM2_CNT = 0;
+    TIM2_CR1 |= OPM;
+}
+
+
 
 void flashInit()
 {
     // initialization of all interfaces
     i2cFlashInit();
     spiFlashInit();
+    indicatorInit();
 }
 
 int findCmd(uint8_t *inputMsg)
@@ -70,6 +108,7 @@ void parseHeader(uint8_t *data)
         head.payloadSize = (uint16_t)((((uint16_t)data[cfgStrSize+3])<<8) + \
                             ((uint16_t)data[cfgStrSize+4]));
         head.packCnt = 0;
+        indicatorOn();
     }
 }
 
@@ -91,6 +130,7 @@ void flasher(uint8_t *data, int size)
             } else {
                 vcpTx((uint8_t*)msg[MSG_NO_ACK],cfgStrSize);
             }
+            indicatorOff();
             head.command = CMD_FINISHED;
             break;
         case I2C_FLASH_READ:
@@ -99,6 +139,7 @@ void flasher(uint8_t *data, int size)
             } else {
                 vcpTx((uint8_t*)msg[MSG_NO_ACK],cfgStrSize);
             }
+            indicatorOff();
             head.command = CMD_FINISHED;
             break;
         case SPI_FLASH_ERASE:
@@ -107,6 +148,7 @@ void flasher(uint8_t *data, int size)
             } else {
                 vcpTx((uint8_t*)msg[SPI_ERROR],cfgStrSize);
             }
+            indicatorOff();
             head.command = CMD_FINISHED;
             break;
         case SPI_FLASH_WRITE:
@@ -128,6 +170,7 @@ void flasher(uint8_t *data, int size)
                     vcpTx((uint8_t*)msg[SPI_ERROR],cfgStrSize);
                 }
                 head.packCnt = 0;
+                indicatorOff();
                 head.command = CMD_FINISHED;
             }
             break;
@@ -135,6 +178,7 @@ void flasher(uint8_t *data, int size)
             if( spiFlashReadAll() < 0 ) {
                 vcpTx((uint8_t*)msg[SPI_ERROR],cfgStrSize);
             }
+            indicatorOff();
             head.command = CMD_FINISHED;
             break;
     }

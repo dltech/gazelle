@@ -35,7 +35,7 @@
 #define IO0_PIN     MOSI_PIN
 #define IO1_PIN     MISO_PIN
 #define IO2_PIN     2
-#define IO3_PIN     1
+#define IO3_PIN     2
 
 #define NSS_SET_PORT    GPIOA_BSRR
 #define NSS_RESET_PORT  GPIOA_BRR
