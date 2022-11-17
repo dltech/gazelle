@@ -15,6 +15,7 @@
 #include <QString>
 #include <QProgressBar>
 #include <QThread>
+#include <QBoxLayout>
 #include "gazelleusb.h"
 
 QT_BEGIN_NAMESPACE
@@ -34,22 +35,24 @@ public slots:
     void updateProgressBar(void);
     void finishWrite(void);
     void finishRead(void);
+    void viewFile(void);
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
 private:
-    void viewFile(QFile *file);
     void disableButtons(void);
     void enableButtons(void);
     Ui::MainWindow *ui;
     // buttons
+    QWidget *hexViewer;
     QToolBar *toolBar;
     QPushButton *read;
     QPushButton *write;
     QPushButton *open;
     QPushButton *save;
     QComboBox *target;
+    QBoxLayout *viewerLay;
     QTextEdit *mem;
     QScrollBar *textScroll;
     QStatusBar *stBar;

@@ -17,8 +17,10 @@ MainWindow::MainWindow(QWidget *parent)
     open = new QPushButton(this);
     save = new QPushButton(this);
     target = new QComboBox(this);
+    hexViewer = new QWidget(this);
+    viewerLay = new QBoxLayout(QBoxLayout::LeftToRight, hexViewer);
     mem = new QTextEdit(this);
-//    textScroll = new QScrollBar(this);
+    textScroll = new QScrollBar(this);
     stBar = new QStatusBar(this);
     progress = new QProgressBar(this);
 
@@ -42,14 +44,18 @@ MainWindow::MainWindow(QWidget *parent)
     // text redactor
     QFont font("editorFont");
     font.setStyleHint(QFont::TypeWriter);
-    font.setStyleHint(QFont::Monospace);
+//    font.setStyleHint(QFont::Monospace);
     font.setPointSize(10);
     mem->setCurrentFont(font);
     mem->setReadOnly(true);
-//    textScroll->setMinimum(0);
-//    textScroll->setMaximum(1000);
-//    textScroll->setScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-//    mem->addScrollBarWidget(textScroll, Qt::AlignRight);
+    mem->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    textScroll->setMinimum(0);
+    textScroll->setMaximum(0);
+    viewerLay->addWidget(mem);
+    viewerLay->addWidget(textScroll);
+    viewerLay->setSpacing(0);
+    viewerLay->setContentsMargins(0,0,0,0);
+    hexViewer->setLayout(viewerLay);
 
     // ading all stuff to main window
     toolBar->addWidget(read);
@@ -59,7 +65,7 @@ MainWindow::MainWindow(QWidget *parent)
     toolBar->addWidget(target);
     toolBar->addWidget(progress);
     addToolBar(toolBar);
-    setCentralWidget(mem);
+    setCentralWidget(hexViewer);
     setStatusBar(stBar);
     resize(640, 480);
 
@@ -72,19 +78,25 @@ MainWindow::MainWindow(QWidget *parent)
     connect(flasher, SIGNAL(anotherEvent()), this, SLOT(updateProgressBar()));
     connect(flasher,SIGNAL(writeComplete()), this, SLOT(finishWrite()));
     connect(flasher,SIGNAL(readComplete()), this, SLOT(finishRead()));
+    connect(textScroll,SIGNAL(valueChanged(int)), this, SLOT(viewFile()));
+
     updateProgressBar();
 }
 
-void MainWindow::viewFile(QFile *file)
+void MainWindow::viewFile()
 {
     mem->clear();
+    if(binary == NULL) {
+        return;
+    }
+    textScroll->setMaximum((binary->size()/16)-10);
+    binary->seek(textScroll->value()*16);
     unsigned char line[16];
-    file->seek(0);
     int cnt = 0;
-    while(  (!file->atEnd()) &&  (cnt++ < 2048) ) {
-        file->read((char *)line,16);
+    while( (!binary->atEnd()) && (cnt++ < 70) ) {
+        binary->read((char *)line,16);
         mem->setTextColor(QColor(QColorConstants::LightGray));
-        mem->insertPlainText(QString::asprintf("%08x  ",cnt));
+        mem->insertPlainText(QString::asprintf("%08x  ",textScroll->value() + cnt));
         mem->setTextColor(QColor(QColorConstants::Black));
         mem->insertPlainText(QString::asprintf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7],line[8],line[9],line[10],line[11],line[12],line[13],line[14],line[15]));
         mem->setTextColor(QColor(QColorConstants::LightGray));
@@ -135,7 +147,7 @@ void MainWindow::openBin()
     }
     currentDir.clear();
     currentDir.append(chooseFile.directory().path());
-    viewFile(binary);
+    viewFile();
 }
 
 void MainWindow::readFlash()
@@ -181,6 +193,7 @@ void MainWindow::saveBin()
     QFile::copy(tempFilename, fileName);
     currentDir.clear();
     currentDir.append(chooseFile.directory().path());
+    stBar->showMessage(fileName.append(" saved"));
 }
 
 void MainWindow::setFlash()
@@ -197,7 +210,6 @@ void MainWindow::updateProgressBar()
 
 void MainWindow::finishWrite()
 {
-    binary->close();
     updateProgressBar();
     timer->stop();
     enableButtons();
@@ -205,8 +217,7 @@ void MainWindow::finishWrite()
 
 void MainWindow::finishRead()
 {
-    viewFile(binary);
-    binary->close();
+    viewFile();
     updateProgressBar();
     timer->stop();
     enableButtons();
